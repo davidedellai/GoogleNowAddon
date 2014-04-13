@@ -22,7 +22,7 @@ public class MainActivity extends Activity {
 				getPackageName() + ".MainActivity-Alias"),
 				PackageManager.COMPONENT_ENABLED_STATE_DISABLED, PackageManager.DONT_KILL_APP);
 		
-		startService(new Intent(this, SpeechRecognitionService.class));
+		startService(new Intent(getApplicationContext(), SpeechRecognitionService.class));
 		
 		finish();
 	}

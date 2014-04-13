@@ -18,26 +18,31 @@ public class BluetoothHandler {
         
         switch (newState) {
         case Off:
-            if (enabled) adapter.disable();
+            speakText = enabled ? "Turning Bluetooth off" : "Bluetooth already off";
+            Toast.makeText(context, speakText, Toast.LENGTH_SHORT).show();
             
-            speakText = enabled ? "Bluetooth off" : "Bluetooth already off";
+            if (enabled) adapter.disable();           
+            
             break;
         case On:
+            speakText = enabled ? "Bluetooth already on" : "Turning Bluetooth on";
+            Toast.makeText(context, speakText, Toast.LENGTH_SHORT).show();
+            
             if (!enabled) adapter.enable();
 
-            speakText = enabled ? "Bluetooth already on" : "Bluetooth on";
             break;
         case Toggle:
+            speakText = String.format("Turning Bluetooth %s", enabled ? "off" : "on");
+            Toast.makeText(context, speakText, Toast.LENGTH_SHORT).show();
+            
             if (enabled)  adapter.disable();
             else adapter.enable();
 
-            speakText = String.format("Bluetooth %s", enabled ? "off" : "on");
             break;
         default:
             return;
         }
 
-        Toast.makeText(context, speakText, Toast.LENGTH_SHORT).show();
         GoogleSearchApi.speak(context, speakText);
     }
 }

@@ -2,6 +2,11 @@ package com.hahn.googlenowaddon;
 
 import java.util.List;
 
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.os.BatteryManager;
+
 public class Util {
 
 	public static String trim(String str) {
@@ -21,4 +26,10 @@ public class Util {
 			list.add(val);
 		}
 	}
+	
+	public static boolean isCharging(Context context) {
+        Intent intent = context.registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+        int plugged = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1);
+        return plugged == BatteryManager.BATTERY_PLUGGED_AC || plugged == BatteryManager.BATTERY_PLUGGED_USB;
+    }
 }
