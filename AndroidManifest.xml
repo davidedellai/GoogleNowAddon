@@ -46,7 +46,6 @@
         </receiver>
         
         <service android:name="com.hahn.googlenowaddon.speech.SpeechRecognitionService"/>
-        <service android:name="edu.cmu.pocketsphix.demo.RecognitionService"/>
     </application>
 
 </manifest>

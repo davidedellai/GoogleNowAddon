@@ -71,7 +71,7 @@ public class GoogleSearchReceiver extends BroadcastReceiver {
         }),
         
         MINIMIZE = new QueryMatcher(new String[] {
-                "CONTAINS ONE : minimize, close, exit",
+                "CONTAINS ONE : minimize, exit",
                 
                 "MAX LENGTH   : 1"
         });

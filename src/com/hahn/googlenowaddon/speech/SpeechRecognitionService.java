@@ -105,28 +105,22 @@ public class SpeechRecognitionService extends Service implements OnInitListener 
 	protected void startListening() {        
         cancelTimeout();
         
+        // Check battery
         if (!isCharging || --batteryCheckDelay < 0) {
-            Log.e("Speech", "Check battery");
-            
             isCharging = Util.isCharging(getApplicationContext());
             if (isCharging) {
                 batteryCheckDelay = 3;
                 
                 if (!partialWakeLock.isHeld()) partialWakeLock.acquire();
-                do_startListening();
-            } else {
-                Log.e("Speech", "Wait for battery");
-                
+            } else {                
                 if (partialWakeLock.isHeld()) partialWakeLock.release();
                 timeoutTimer(10000);
+                
+                return;
             }
-        } else {
-            do_startListening();
         }
-    }
-    
-    @SuppressLint("Wakelock")
-	private void do_startListening() {                
+        
+        // Start listening
         if (!getForegroundPackage().equals(LAUNCH_TARGET)) {
             if (fullWakeLock.isHeld()) fullWakeLock.release();
             
