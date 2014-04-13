@@ -3,10 +3,10 @@ import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.hahn.googlenowaddon.Constants.Enum_Key;
 import com.hahn.googlenowaddon.handlers.BluetoothHandler;
 import com.hahn.googlenowaddon.handlers.MobileDataHandler;
 import com.hahn.googlenowaddon.handlers.QueryMatcher;
-import com.hahn.googlenowaddon.handlers.Constants.Enum_Key;
 import com.hahn.googlenowaddon.handlers.WifiHandler;
 
 import android.content.BroadcastReceiver;
@@ -47,24 +47,24 @@ public class GoogleSearchReceiver extends BroadcastReceiver {
 		WIFI_CONTROL = new QueryMatcher(new String[] {
 		        "CONTAINS : wifi",
 		        
-		        "KEY On     : turn on, enable",
-                "KEY Off    : turn off, disable",
+		        "KEY On     : on, enable",
+                "KEY Off    : off, disable",
                 "KEY Toggle : toggle"
 		}),
 		
 		BLUETOOTH_CONTROL = new QueryMatcher(new String[] {
                 "CONTAINS : bluetooth",
                 
-                "KEY On     : turn on, enable",
-                "KEY Off    : turn off, disable",
+                "KEY On     : on, enable",
+                "KEY Off    : off, disable",
                 "KEY Toggle : toggle"
         }),
         
         DATA_CONTROL  = new QueryMatcher(new String[] {
                 "CONTAINS : data",
                 
-                "KEY On     : turn on, enable",
-                "KEY Off    : turn off, disable",
+                "KEY On     : on, enable",
+                "KEY Off    : off, disable",
                 "KEY Toggle : toggle"
         });
 		

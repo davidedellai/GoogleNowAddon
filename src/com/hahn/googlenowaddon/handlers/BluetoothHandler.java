@@ -5,7 +5,7 @@ import android.content.Context;
 import android.widget.Toast;
 
 import com.hahn.googlenowaddon.GoogleSearchApi;
-import com.hahn.googlenowaddon.handlers.Constants.Enum_Key;
+import com.hahn.googlenowaddon.Constants.Enum_Key;
 
 public class BluetoothHandler {
     public static void handleStateChange(Context context, Enum_Key newState) {

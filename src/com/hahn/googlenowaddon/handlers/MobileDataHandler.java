@@ -6,7 +6,7 @@ import java.lang.reflect.Method;
 import android.content.Context;
 import android.net.ConnectivityManager;
 
-import com.hahn.googlenowaddon.handlers.Constants.Enum_Key;
+import com.hahn.googlenowaddon.Constants.Enum_Key;
 
 public class MobileDataHandler {
 	public static void handleStateChange(Context context, Enum_Key newState) {

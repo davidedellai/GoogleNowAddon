@@ -7,6 +7,7 @@ import java.util.TimerTask;
 
 import com.hahn.googlenowaddon.Util;
 
+import android.annotation.SuppressLint;
 import android.app.ActivityManager;
 import android.app.ActivityManager.RunningTaskInfo;
 import android.app.Notification;
@@ -17,6 +18,8 @@ import android.media.AudioManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
+import android.os.PowerManager;
+import android.os.PowerManager.WakeLock;
 import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
@@ -24,11 +27,19 @@ import android.util.Log;
 import android.widget.Toast;
 
 public class SpeechRecognitionService extends Service {
-    public static final int myId = 1524;
+    public static final int SERVICE_ID = 1524;
+    public static final String KEY_PHRASE = "google";
     
+    public static final int MUTE_STREAM = AudioManager.STREAM_MUSIC;
+    
+    private WakeLock wakelock;
     private boolean isCharging;
+    private int batteryCheckDelay;
+    
     private Timer timeoutTimer;
-    private Handler handler;
+    
+    /** A handler linked to the main thread */
+    private Handler mainThreadHandler;
     
     private SpeechRecognizer sr;
     private AudioManager audioManager;
@@ -41,6 +52,10 @@ public class SpeechRecognitionService extends Service {
         
         audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE); 
         
+        PowerManager powerManager = (PowerManager) getSystemService(POWER_SERVICE);
+        wakelock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "SpeechRecognitionWakeLock");
+        wakelock.acquire();
+        
         sr = SpeechRecognizer.createSpeechRecognizer(this);
         sr.setRecognitionListener(new SpeechRecognitionListener());
         
@@ -49,25 +64,32 @@ public class SpeechRecognitionService extends Service {
                 .setPriority(Notification.PRIORITY_MIN)
                 .build();
         
-        this.startForeground(myId, note);
+        this.startForeground(SERVICE_ID, note);
         
-        this.handler = new Handler();
+        this.mainThreadHandler = new Handler();
         
         startListening();
     }
     
-    protected void startListening() {
+    @SuppressLint("Wakelock")
+	protected void startListening() {
         Log.e("Speech", "Start listening");
         
         cancelTimeout();
         
-        if (!isCharging) {
+        if (!isCharging || --batteryCheckDelay < 0) {
             Log.e("Speech", "Check battery");
             
             isCharging = Util.isCharging(getApplicationContext());
             if (isCharging) {
+                batteryCheckDelay = 3;
+                
+                wakelock.acquire();
                 do_startListening();
             } else {
+                Log.e("Speech", "Wait for battery");
+                
+                wakelock.release();
                 timeoutTimer(10000);
             }
         } else {
@@ -80,9 +102,9 @@ public class SpeechRecognitionService extends Service {
         RunningTaskInfo info = am.getRunningTasks(1).get(0);
         
         if (!info.baseActivity.getPackageName().equals("com.google.android.googlequicksearchbox")) {
-            timeoutTimer(4000);
+            timeoutTimer(5000);
             
-            audioManager.setStreamSolo(AudioManager.STREAM_VOICE_CALL, true);
+            audioManager.setStreamMute(MUTE_STREAM, true);
             
             Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
             intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
@@ -116,7 +138,7 @@ public class SpeechRecognitionService extends Service {
     
     protected void restartListening() {
         // Associate with main thread
-        handler.post(new Runnable() {
+        mainThreadHandler.post(new Runnable() {
             @Override
             public void run() {
                 sr.cancel();
@@ -149,6 +171,10 @@ public class SpeechRecognitionService extends Service {
         if (sr != null) {
             sr.destroy();
         }
+        
+        if (wakelock != null) {
+            wakelock.release();
+        }
     }
     
     protected class SpeechRecognitionListener implements RecognitionListener {        
@@ -160,9 +186,7 @@ public class SpeechRecognitionService extends Service {
         }
     
         @Override
-        public void onBufferReceived(byte[] buffer) {
-            // Log.d("Speech", "onBufferReceived");
-        }
+        public void onBufferReceived(byte[] buffer) { }
     
         @Override
         public void onEndOfSpeech() {
@@ -183,20 +207,16 @@ public class SpeechRecognitionService extends Service {
         }
     
         @Override
-        public void onEvent(int eventType, Bundle params) {
-            // Log.d("Speech", "onEvent");
-        }
+        public void onEvent(int eventType, Bundle params) { }
     
         @Override
-        public void onPartialResults(Bundle partialResults) {
-            // Log.d("Speech", "onPartialResults");
-        }
+        public void onPartialResults(Bundle partialResults) { }
     
         @Override
         public void onReadyForSpeech(Bundle params) {
-            // Log.d("Speech", "onReadyForSpeech");
+            Log.d("Speech", "onReadyForSpeech");
             
-            audioManager.setStreamSolo(AudioManager.STREAM_VOICE_CALL, false);
+            audioManager.setStreamMute(MUTE_STREAM, false);
         }
     
         @Override
@@ -204,8 +224,9 @@ public class SpeechRecognitionService extends Service {
             Log.d("Speech", "onResults");
             
             ArrayList<String> strlist = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
-            if (strlist.size() > 0) {                
-                if (strlist.get(0).toLowerCase(Locale.ENGLISH).equals("okay google")) {
+            if (strlist.size() > 0) {
+                String phrase = strlist.get(0).toLowerCase(Locale.ENGLISH); 
+                if (phrase.equals(SpeechRecognitionService.KEY_PHRASE)) {
                     Toast.makeText(getApplicationContext(), "Loading...", Toast.LENGTH_SHORT).show();
                     
                     Intent googleNow = getPackageManager().getLaunchIntentForPackage("com.google.android.googlequicksearchbox");
@@ -215,7 +236,9 @@ public class SpeechRecognitionService extends Service {
                     timeoutTimer(4000);
                     return;
                 } else {
-                    Log.d("Speech", strlist.get(0));
+                    for (String str: strlist) {
+                        Log.d("Speech", str);
+                    }
                 }
             }
             

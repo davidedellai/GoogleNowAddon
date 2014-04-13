@@ -1,4 +1,4 @@
-package com.hahn.googlenowaddon.handlers;
+package com.hahn.googlenowaddon;
 
 public class Constants {	
 	public enum Enum_Key {

@@ -11,7 +11,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.hahn.googlenowaddon.Util;
-import com.hahn.googlenowaddon.handlers.Constants.Enum_Key;
+import com.hahn.googlenowaddon.Constants.Enum_Key;
 
 public class QueryMatcher {
 	private final static Pattern KEY_REGEX = Pattern.compile("(start)?\\s*key\\s*\\[?([_a-zA-Z]+)\\]?", Pattern.CASE_INSENSITIVE);
