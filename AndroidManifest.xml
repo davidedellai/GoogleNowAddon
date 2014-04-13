@@ -10,6 +10,7 @@
     <uses-permission android:name="com.mohammadag.googlesearchapi.permission.ACCESS_GGOGLE_SEARCH_API" />
     
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
     <uses-permission android:name="android.permission.BLUETOOTH" />
@@ -36,11 +37,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
                 <action android:name="android.intent.action.MAIN" />
             </intent-filter>
-            
-            <intent-filter>
-				<action android:name="android.speech.action.RECOGNIZE_SPEECH" />
-				<category android:name="android.intent.category.DEFAULT" />
-			</intent-filter>
         </activity-alias>
         
         <receiver android:name="com.hahn.googlenowaddon.GoogleSearchReceiver" >
@@ -50,6 +46,7 @@
         </receiver>
         
         <service android:name="com.hahn.googlenowaddon.speech.SpeechRecognitionService"/>
+        <service android:name="edu.cmu.pocketsphix.demo.RecognitionService"/>
     </application>
 
 </manifest>

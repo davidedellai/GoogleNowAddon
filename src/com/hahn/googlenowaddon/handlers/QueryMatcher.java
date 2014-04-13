@@ -18,6 +18,7 @@ public class QueryMatcher {
 	
 	private final List<String> contains_all, contains_one, not_contains, not_start_with, start_with_one;
 	private final HashMap<String, Enum_Key> keys, start_keys;
+	private int max_length;
 	
 	public QueryMatcher(String[] defs) {
 		contains_all = new ArrayList<String>();
@@ -51,6 +52,8 @@ public class QueryMatcher {
 					Util.addAll(not_start_with, params);
 				} else if (type.matches("(?i)starts? with( one of| a| one)?")) {
 					Util.addAll(start_with_one, params);
+				} else if (type.matches("(?i)max length") && params.length == 1 && params[0].matches("\\d+")) {
+				    max_length = Integer.valueOf(params[0]);
 				} else {
 					boolean isKey = checkForKey(type, params);
 					if (!isKey) {
@@ -92,7 +95,14 @@ public class QueryMatcher {
 	 * @param queryText The query to check
 	 * @return `null` failed, `KEY.Success` general success, anything else is a set key 
 	 */
-	public Enum_Key match(String queryText) {		
+	public Enum_Key match(String queryText) {
+	    // Check for longer than max length
+	    if (max_length > 0) {
+	        if (queryText.split(" ").length > max_length) {
+	            return null;
+	        }
+	    }
+	    
 		// Check contains all of the given
 		for (String contain_str: contains_all) {
 			if (!queryText.contains(contain_str)) {

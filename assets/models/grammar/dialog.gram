@@ -1,0 +1,7 @@
+#JSGF V1.0;
+
+grammar dialog;
+
+<google> = google ;
+
+public <command> = <google>;

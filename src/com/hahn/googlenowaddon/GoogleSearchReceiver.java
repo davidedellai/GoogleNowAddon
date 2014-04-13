@@ -8,11 +8,13 @@ import com.hahn.googlenowaddon.handlers.BluetoothHandler;
 import com.hahn.googlenowaddon.handlers.MobileDataHandler;
 import com.hahn.googlenowaddon.handlers.QueryMatcher;
 import com.hahn.googlenowaddon.handlers.WifiHandler;
+import com.hahn.googlenowaddon.speech.SpeechRecognitionService;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.media.AudioManager;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.widget.Toast;
 
@@ -66,10 +68,17 @@ public class GoogleSearchReceiver extends BroadcastReceiver {
                 "KEY On     : on, enable",
                 "KEY Off    : off, disable",
                 "KEY Toggle : toggle"
+        }),
+        
+        MINIMIZE = new QueryMatcher(new String[] {
+                "CONTAINS ONE : minimize, close, exit",
+                
+                "MAX LENGTH   : 1"
         });
 		
 	
 	@Override
+	@SuppressWarnings("incomplete-switch")
 	public void onReceive(Context context, Intent intent) {
 		Enum_Key key;
 		
@@ -78,47 +87,53 @@ public class GoogleSearchReceiver extends BroadcastReceiver {
 
 		key = MEDIA_CONTROL.match(queryText);
 		if (key != null) {
-			if (key == Enum_Key.Resume) {
+		    switch (key) {
+		    case Resume:
 				sendMediaKey(context, KeyEvent.KEYCODE_MEDIA_PLAY);
 				Toast.makeText(context, "Music Resumed", Toast.LENGTH_SHORT).show();
-			} else if (key == Enum_Key.Pause) {
+				return;
+		    case Pause:
 				sendMediaKey(context, KeyEvent.KEYCODE_MEDIA_PAUSE);
 				Toast.makeText(context, "Music Paused", Toast.LENGTH_SHORT).show();
-			} else if (key == Enum_Key.Stop) {
+				return;
+		    case Stop:
 				sendMediaKey(context, KeyEvent.KEYCODE_MEDIA_STOP);
 				Toast.makeText(context, "Music Stopped", Toast.LENGTH_SHORT).show();
+				return;
 			}
-			
-			return;
 		}
 
 		key = TRACK_CONTROL.match(queryText);
 		if (key != null) {
-			if (key == Enum_Key.Next) {
+			switch (key) {
+			case Next:
 				sendMediaKey(context, KeyEvent.KEYCODE_MEDIA_NEXT);
 				Toast.makeText(context, "Next Song", Toast.LENGTH_SHORT).show();
-			} else if (key == Enum_Key.Previous) {
+				return;
+			case Previous:
 				sendMediaKey(context, KeyEvent.KEYCODE_MEDIA_PREVIOUS);
 				Toast.makeText(context, "Previous Song", Toast.LENGTH_SHORT).show();
+				return;
 			}
-			
-			return;
 		}
 
 		key = VOLUME_CONTROL.match(queryText);
 		if (key != null && key != Enum_Key.Default) {
 			AudioManager audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
-			if (key == Enum_Key.Up) {
+			switch(key) {
+			case Up:
 				audioManager.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_RAISE, AudioManager.FLAG_SHOW_UI);
-			} else if (key == Enum_Key.Down) {
+				return;
+			case Down:
 				audioManager.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_LOWER, AudioManager.FLAG_SHOW_UI);
-			} else if (key == Enum_Key.Max) {
+				return;
+			case Max:
 				audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC), AudioManager.FLAG_SHOW_UI);
-			} else if (key == Enum_Key.Min) {
+				return;
+			case Min:
 				audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, 1, AudioManager.FLAG_SHOW_UI);
+				return;
 			}
-			
-			return;
 		}
 		
 		key = WIFI_CONTROL.match(queryText);
@@ -136,6 +151,28 @@ public class GoogleSearchReceiver extends BroadcastReceiver {
 		if (key != null) {
             MobileDataHandler.handleStateChange(context, key);
         }
+		
+		key = MINIMIZE.match(queryText);
+		if (key != null) {
+		    Log.e("Reciever", SpeechRecognitionService.LAST_PACKAGE);
+		    
+		    // Try to relaunch last package
+		    if (!SpeechRecognitionService.LAST_PACKAGE.equals(SpeechRecognitionService.LAUNCH_TARGET)) {
+    		    Intent lastPackage = context.getPackageManager().getLaunchIntentForPackage(SpeechRecognitionService.LAST_PACKAGE);
+                if (lastPackage != null) {
+                    lastPackage.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    context.startActivity(lastPackage);
+                    return;
+                }
+		    }
+                
+            // If failed to open last package, go to home screen
+		    Intent home = new Intent(Intent.ACTION_MAIN);
+		    home.addCategory(Intent.CATEGORY_HOME);
+		    home.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+	        context.startActivity(home);
+		    return;
+		}
 		
 		Matcher m = SET_VOLUME_TO.matcher(queryText);
 		if (m.matches()) {

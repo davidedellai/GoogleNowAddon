@@ -9,7 +9,6 @@ import com.hahn.googlenowaddon.Util;
 
 import android.annotation.SuppressLint;
 import android.app.ActivityManager;
-import android.app.ActivityManager.RunningTaskInfo;
 import android.app.Notification;
 import android.app.Service;
 import android.content.Context;
@@ -24,15 +23,18 @@ import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
 import android.util.Log;
-import android.widget.Toast;
 
 public class SpeechRecognitionService extends Service {
+    private static final int MUTE_STREAM = AudioManager.STREAM_MUSIC;
+    
     public static final int SERVICE_ID = 1524;
+    public static final String LAUNCH_TARGET = "com.google.android.googlequicksearchbox";
+    
     public static final String KEY_PHRASE = "google";
+    public static String LAST_PACKAGE = LAUNCH_TARGET;
     
-    public static final int MUTE_STREAM = AudioManager.STREAM_MUSIC;
     
-    private WakeLock wakelock;
+    private WakeLock partialWakeLock, fullWakeLock;
     private boolean isCharging;
     private int batteryCheckDelay;
     
@@ -42,31 +44,35 @@ public class SpeechRecognitionService extends Service {
     private Handler mainThreadHandler;
     
     private SpeechRecognizer sr;
-    private AudioManager audioManager;
     
+    private ActivityManager activityManager;
+    private AudioManager audioManager;
+    private PowerManager powerManager;
+    
+    @SuppressWarnings("deprecation")
     @Override
     public void onCreate() {
         super.onCreate();
         
         Log.e("Speech", "Create service");
         
-        audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE); 
+        mainThreadHandler = new Handler();
         
-        PowerManager powerManager = (PowerManager) getSystemService(POWER_SERVICE);
-        wakelock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "SpeechRecognitionWakeLock");
-        wakelock.acquire();
+        activityManager = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
+        audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE); 
+        powerManager = (PowerManager) getSystemService(POWER_SERVICE);
+        
+        partialWakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "SpeechRecognitionWakeLock");
+        fullWakeLock = powerManager.newWakeLock(
+                PowerManager.SCREEN_BRIGHT_WAKE_LOCK | 
+                PowerManager.FULL_WAKE_LOCK | 
+                PowerManager.ACQUIRE_CAUSES_WAKEUP, "FullSpeechRecognitionWakeLock");
         
         sr = SpeechRecognizer.createSpeechRecognizer(this);
         sr.setRecognitionListener(new SpeechRecognitionListener());
         
-        Notification note = new Notification.Builder(getApplicationContext())
-                .setContentTitle("Google Now Launcher")
-                .setPriority(Notification.PRIORITY_MIN)
-                .build();
-        
-        this.startForeground(SERVICE_ID, note);
-        
-        this.mainThreadHandler = new Handler();
+        Notification note = new Notification.Builder(getApplicationContext()).setPriority(Notification.PRIORITY_MIN).build();        
+        startForeground(SERVICE_ID, note);
         
         startListening();
     }
@@ -84,12 +90,12 @@ public class SpeechRecognitionService extends Service {
             if (isCharging) {
                 batteryCheckDelay = 3;
                 
-                wakelock.acquire();
+                if (!partialWakeLock.isHeld()) partialWakeLock.acquire();
                 do_startListening();
             } else {
                 Log.e("Speech", "Wait for battery");
                 
-                wakelock.release();
+                if (partialWakeLock.isHeld()) partialWakeLock.release();
                 timeoutTimer(10000);
             }
         } else {
@@ -97,24 +103,25 @@ public class SpeechRecognitionService extends Service {
         }
     }
     
-    private void do_startListening() {        
-        ActivityManager am = (ActivityManager) SpeechRecognitionService.this.getSystemService(ACTIVITY_SERVICE);
-        RunningTaskInfo info = am.getRunningTasks(1).get(0);
-        
-        if (!info.baseActivity.getPackageName().equals("com.google.android.googlequicksearchbox")) {
-            timeoutTimer(5000);
+    private void do_startListening() {                
+        if (!getForegroundPackage().equals(LAUNCH_TARGET)) {
+            if (fullWakeLock.isHeld()) fullWakeLock.release();
             
-            audioManager.setStreamMute(MUTE_STREAM, true);
-            
-            Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-            intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-            
-            sr.startListening(intent);
-        } else {
-            Log.e("Speech", "Waiting to close google now");
-            
-            timeoutTimer(2000);
+            if (!audioManager.isMusicActive()) {
+                timeoutTimer(5000);
+                
+                audioManager.setStreamMute(MUTE_STREAM, true);
+                
+                Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+                intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+                
+                sr.startListening(intent);
+                return;
+            }
         }
+        
+        Log.e("Speech", "Waiting to close app");
+        timeoutTimer(2000);
     }
     
     protected void cancelTimeout() {
@@ -134,6 +141,10 @@ public class SpeechRecognitionService extends Service {
                 restartListening();
             }
         }, delay);
+    }
+    
+    protected String getForegroundPackage() {
+        return activityManager.getRunningTasks(1).get(0).baseActivity.getPackageName();
     }
     
     protected void restartListening() {
@@ -172,8 +183,12 @@ public class SpeechRecognitionService extends Service {
             sr.destroy();
         }
         
-        if (wakelock != null) {
-            wakelock.release();
+        if (partialWakeLock != null && partialWakeLock.isHeld()) {
+            partialWakeLock.release();
+        }
+        
+        if (fullWakeLock != null && fullWakeLock.isHeld()) {
+            fullWakeLock.release();
         }
     }
     
@@ -226,10 +241,13 @@ public class SpeechRecognitionService extends Service {
             ArrayList<String> strlist = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
             if (strlist.size() > 0) {
                 String phrase = strlist.get(0).toLowerCase(Locale.ENGLISH); 
-                if (phrase.equals(SpeechRecognitionService.KEY_PHRASE)) {
-                    Toast.makeText(getApplicationContext(), "Loading...", Toast.LENGTH_SHORT).show();
+                if (phrase.equals(KEY_PHRASE)) {
+                    // Toast.makeText(getApplicationContext(), "Loading...", Toast.LENGTH_SHORT).show();
                     
-                    Intent googleNow = getPackageManager().getLaunchIntentForPackage("com.google.android.googlequicksearchbox");
+                    LAST_PACKAGE = getForegroundPackage();
+                    if (!fullWakeLock.isHeld()) fullWakeLock.acquire();
+                    
+                    Intent googleNow = getPackageManager().getLaunchIntentForPackage(LAUNCH_TARGET);
                     googleNow.setAction("android.intent.action.VOICE_ASSIST");
                     startActivity(googleNow);
                     
