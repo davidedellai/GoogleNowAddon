@@ -18,6 +18,8 @@ import android.app.Notification;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.media.AudioManager;
+import android.media.AudioManager.OnAudioFocusChangeListener;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.PowerManager;
@@ -51,6 +53,7 @@ public class SpeechRecognitionService extends Service implements OnInitListener 
     
     private ActivityManager activityManager;
     private PowerManager powerManager;
+    private static AudioManager audioManager;
     
     @SuppressWarnings("deprecation")
     @Override
@@ -65,6 +68,7 @@ public class SpeechRecognitionService extends Service implements OnInitListener 
         
         activityManager = (ActivityManager) getSystemService(ACTIVITY_SERVICE); 
         powerManager = (PowerManager) getSystemService(POWER_SERVICE);
+        audioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
         
         tts = new TextToSpeech(this, this);
         tts.setSpeechRate(0.9f);
@@ -196,6 +200,16 @@ public class SpeechRecognitionService extends Service implements OnInitListener 
     
     public static void speak(String str) {
         if (tts != null) {
+            if (audioManager != null) {
+                audioManager.requestAudioFocus(new OnAudioFocusChangeListener() {
+                            @Override
+                            public void onAudioFocusChange(int focusChange) { }
+                        },
+                        AudioManager.STREAM_MUSIC,
+                        AudioManager.AUDIOFOCUS_GAIN
+                    );
+            }
+            
             tts.speak(str, TextToSpeech.QUEUE_FLUSH, null);
         }
     }
