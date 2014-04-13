@@ -1,0 +1,44 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.hahn.googlenowaddon"
+    android:versionCode="1"
+    android:versionName="1.0" >
+
+    <uses-sdk
+        android:minSdkVersion="16"
+        android:targetSdkVersion="18" />
+    
+    <uses-permission android:name="com.mohammadag.googlesearchapi.permission.ACCESS_GGOGLE_SEARCH_API" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+    <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
+
+    <application
+        android:allowBackup="true"
+        android:icon="@drawable/ic_launcher"
+        android:label="@string/app_name"
+        android:theme="@style/AppTheme" >
+        <activity
+            android:name="com.hahn.googlenowaddon.MainActivity"
+            android:label="@string/app_name" >
+        </activity>
+        
+        <activity-alias
+            android:name="com.hahn.googlenowaddon.MainActivity-Alias"
+            android:label="@string/app_name"
+            android:targetActivity="com.hahn.googlenowaddon.MainActivity" >
+            <intent-filter>
+                <category android:name="android.intent.category.LAUNCHER" />
+                <action android:name="android.intent.action.MAIN" />
+            </intent-filter>
+        </activity-alias>
+        
+        <receiver android:name="com.hahn.googlenowaddon.GoogleSearchReceiver" >
+            <intent-filter>
+                <action android:name="com.mohammadag.googlesearchapi.NEW_SEARCH" />
+            </intent-filter>
+        </receiver>
+    </application>
+
+</manifest>
