@@ -2,4 +2,7 @@
 
     <string name="app_name">GoogleNowAddon</string>
 
+    <string name="key_phrase">Key Phrase</string>
+    <string name="set_key_phrase">Set</string>
+
 </resources>

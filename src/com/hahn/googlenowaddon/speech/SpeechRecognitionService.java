@@ -1,8 +1,10 @@
 package com.hahn.googlenowaddon.speech;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Locale;
+import java.util.Scanner;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -14,21 +16,25 @@ import android.annotation.SuppressLint;
 import android.app.ActivityManager;
 import android.app.Notification;
 import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.PowerManager;
 import android.os.PowerManager.WakeLock;
+import android.speech.tts.TextToSpeech;
+import android.speech.tts.TextToSpeech.OnInitListener;
 import android.util.Log;
 
 import static edu.cmu.pocketsphinx.Assets.syncAssets;
 import static edu.cmu.pocketsphinx.SpeechRecognizerSetup.defaultSetup;
 
-public class SpeechRecognitionService extends Service {
+public class SpeechRecognitionService extends Service implements OnInitListener {
     public static final int SERVICE_ID = 1524;
     public static final String LAUNCH_TARGET = "com.google.android.googlequicksearchbox";
+    public static final String SAVE_FILE_NAME = "key_phrase";
     
-    public static final String KEY_PHRASE = "start";
+    public static String KEY_PHRASE = "okay google";
     public static String LAST_PACKAGE = LAUNCH_TARGET;
     
     private WakeLock partialWakeLock, fullWakeLock;
@@ -40,6 +46,7 @@ public class SpeechRecognitionService extends Service {
     /** A handler linked to the main thread */
     private Handler mainThreadHandler;
     
+    private static TextToSpeech tts;
     private SpeechRecognizer sr;
     
     private ActivityManager activityManager;
@@ -52,10 +59,15 @@ public class SpeechRecognitionService extends Service {
         
         Log.e("Speech", "Create service");
         
+        recoverKeyPhrase();
+        
         mainThreadHandler = new Handler();
         
         activityManager = (ActivityManager) getSystemService(ACTIVITY_SERVICE); 
         powerManager = (PowerManager) getSystemService(POWER_SERVICE);
+        
+        tts = new TextToSpeech(this, this);
+        tts.setSpeechRate(0.9f);
         
         partialWakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "SpeechRecognitionWakeLock");
         fullWakeLock = powerManager.newWakeLock(
@@ -109,15 +121,20 @@ public class SpeechRecognitionService extends Service {
         }
     }
     
-    private void do_startListening() {                
+    @SuppressLint("Wakelock")
+	private void do_startListening() {                
         if (!getForegroundPackage().equals(LAUNCH_TARGET)) {
             if (fullWakeLock.isHeld()) fullWakeLock.release();
             
             timeoutTimer(5000);
             
             sr.stop();
+            
+            sr.addKeywordSearch("wakeup", KEY_PHRASE);
             sr.startListening("wakeup");
         } else {
+            if (!fullWakeLock.isHeld()) fullWakeLock.acquire();
+            
             Log.e("Speech", "Waiting to close app");
             timeoutTimer(2000);
         }
@@ -147,7 +164,6 @@ public class SpeechRecognitionService extends Service {
     }
     
     protected void restartListening() {
-        // Associate with main thread
         mainThreadHandler.post(new Runnable() {
             @Override
             public void run() {
@@ -159,18 +175,33 @@ public class SpeechRecognitionService extends Service {
     }
     
     @Override
-    public int onStartCommand(Intent i, int flags, int startId) {
-        super.onStartCommand(i, flags, startId);
-        
-        Log.e("Speech", "onStartCommand");
-        
+    public int onStartCommand(Intent i, int flags, int startId) {        
         return Service.START_STICKY;
     }
     
     @Override
+    public void onInit(int status) {
+        if (status == TextToSpeech.SUCCESS) {
+            int result = tts.setLanguage(Locale.US);
+            if (result == TextToSpeech.LANG_MISSING_DATA ||
+                result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                Log.v("TTS", "Language is not available.");
+            } else {
+                speak("Google Now Add On started");
+            }
+        } else {
+            Log.v("TTS", "Could not initialize TextToSpeech.");
+        }
+    }
+    
+    public static void speak(String str) {
+        if (tts != null) {
+            tts.speak(str, TextToSpeech.QUEUE_FLUSH, null);
+        }
+    }
+    
+    @Override
     public IBinder onBind(Intent intent) {
-        Log.e("Speech", "Bind");
-        
         return null;
     }
     
@@ -182,12 +213,56 @@ public class SpeechRecognitionService extends Service {
             sr.stop();
         }
         
+        if (tts != null) {
+            tts.stop();
+            tts.shutdown();
+        }
+        
         if (partialWakeLock != null && partialWakeLock.isHeld()) {
             partialWakeLock.release();
         }
         
         if (fullWakeLock != null && fullWakeLock.isHeld()) {
             fullWakeLock.release();
+        }
+        
+        saveKeyPharse();
+    }
+    
+    private void saveKeyPharse() {
+        FileOutputStream fos = null;
+        try {
+            fos = openFileOutput(SAVE_FILE_NAME, Context.MODE_PRIVATE);
+            fos.write(KEY_PHRASE.getBytes());
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            if (fos != null) {
+                try {
+                    fos.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+    
+    private void recoverKeyPhrase() {
+        File file = new File(SAVE_FILE_NAME);
+        if (file.exists()) {
+            Scanner scanner = null;
+            try {
+                scanner = new Scanner(file);
+                if (scanner.hasNext()) {
+                    KEY_PHRASE = scanner.nextLine();
+                }                
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                if (scanner != null) {
+                    scanner.close();
+                }
+            }
         }
     }
     
@@ -227,12 +302,7 @@ public class SpeechRecognitionService extends Service {
         }
 
         @Override
-        public void onResult(Hypothesis hypot) {  
-            String phrase = hypot.getHypstr().toLowerCase(Locale.ENGLISH);
-            
-            Log.e("Speech", "onResults = " + phrase);
-            
-            restartListening();
-        }
+        public void onResult(Hypothesis hypot) {  }
     }
+
 }

@@ -4,8 +4,8 @@ import android.content.Context;
 import android.net.wifi.WifiManager;
 import android.widget.Toast;
 
-import com.hahn.googlenowaddon.GoogleSearchApi;
 import com.hahn.googlenowaddon.Constants.Enum_Key;
+import com.hahn.googlenowaddon.speech.SpeechRecognitionService;
 
 public class WifiHandler {
 
@@ -41,6 +41,6 @@ public class WifiHandler {
         }
 
         Toast.makeText(context, visualText, Toast.LENGTH_SHORT).show();
-        GoogleSearchApi.speak(context, speakText);
+        SpeechRecognitionService.speak(speakText);
     }
 }

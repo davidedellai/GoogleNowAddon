@@ -181,6 +181,7 @@ public class GoogleSearchReceiver extends BroadcastReceiver {
 			int level = Integer.valueOf(m.group(1));
 			if (level >= 0 && level <= audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)) {
 				audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, level, AudioManager.FLAG_SHOW_UI);
+				SpeechRecognitionService.speak("Set volume to " + level);
 			}
 			
 			return;

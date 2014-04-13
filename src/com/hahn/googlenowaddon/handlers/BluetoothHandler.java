@@ -4,8 +4,8 @@ import android.bluetooth.BluetoothAdapter;
 import android.content.Context;
 import android.widget.Toast;
 
-import com.hahn.googlenowaddon.GoogleSearchApi;
 import com.hahn.googlenowaddon.Constants.Enum_Key;
+import com.hahn.googlenowaddon.speech.SpeechRecognitionService;
 
 public class BluetoothHandler {
     public static void handleStateChange(Context context, Enum_Key newState) {
@@ -43,6 +43,6 @@ public class BluetoothHandler {
             return;
         }
 
-        GoogleSearchApi.speak(context, speakText);
+        SpeechRecognitionService.speak(speakText);
     }
 }

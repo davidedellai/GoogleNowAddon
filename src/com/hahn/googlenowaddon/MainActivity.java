@@ -7,6 +7,8 @@ import android.content.ComponentName;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.view.View;
+import android.widget.EditText;
 import android.widget.Toast;
 
 public class MainActivity extends Activity {
@@ -23,7 +25,18 @@ public class MainActivity extends Activity {
 				PackageManager.COMPONENT_ENABLED_STATE_DISABLED, PackageManager.DONT_KILL_APP);
 		
 		startService(new Intent(getApplicationContext(), SpeechRecognitionService.class));
-		
-		finish();
+	}
+	
+	@Override
+	protected void onStart() {
+	    super.onStart();
+	    
+	    EditText text = (EditText) findViewById(R.id.key_phrase);
+        text.setText(SpeechRecognitionService.KEY_PHRASE);
+	}
+	
+	public void setKeyPhrase(View view) {
+	    EditText text = (EditText) findViewById(R.id.key_phrase);
+	    SpeechRecognitionService.KEY_PHRASE = text.getText().toString();
 	}
 }
