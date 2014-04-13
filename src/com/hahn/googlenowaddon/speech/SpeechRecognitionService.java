@@ -1,38 +1,35 @@
 package com.hahn.googlenowaddon.speech;
 
-import java.util.ArrayList;
+import java.io.File;
+import java.io.IOException;
 import java.util.Locale;
 import java.util.Timer;
 import java.util.TimerTask;
 
 import com.hahn.googlenowaddon.Util;
 
+import edu.cmu.pocketsphinx.*;
+
 import android.annotation.SuppressLint;
 import android.app.ActivityManager;
 import android.app.Notification;
 import android.app.Service;
-import android.content.Context;
 import android.content.Intent;
-import android.media.AudioManager;
-import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.PowerManager;
 import android.os.PowerManager.WakeLock;
-import android.speech.RecognitionListener;
-import android.speech.RecognizerIntent;
-import android.speech.SpeechRecognizer;
 import android.util.Log;
 
+import static edu.cmu.pocketsphinx.Assets.syncAssets;
+import static edu.cmu.pocketsphinx.SpeechRecognizerSetup.defaultSetup;
+
 public class SpeechRecognitionService extends Service {
-    private static final int MUTE_STREAM = AudioManager.STREAM_MUSIC;
-    
     public static final int SERVICE_ID = 1524;
     public static final String LAUNCH_TARGET = "com.google.android.googlequicksearchbox";
     
-    public static final String KEY_PHRASE = "google";
+    public static final String KEY_PHRASE = "start";
     public static String LAST_PACKAGE = LAUNCH_TARGET;
-    
     
     private WakeLock partialWakeLock, fullWakeLock;
     private boolean isCharging;
@@ -46,7 +43,6 @@ public class SpeechRecognitionService extends Service {
     private SpeechRecognizer sr;
     
     private ActivityManager activityManager;
-    private AudioManager audioManager;
     private PowerManager powerManager;
     
     @SuppressWarnings("deprecation")
@@ -58,8 +54,7 @@ public class SpeechRecognitionService extends Service {
         
         mainThreadHandler = new Handler();
         
-        activityManager = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
-        audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE); 
+        activityManager = (ActivityManager) getSystemService(ACTIVITY_SERVICE); 
         powerManager = (PowerManager) getSystemService(POWER_SERVICE);
         
         partialWakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "SpeechRecognitionWakeLock");
@@ -68,8 +63,21 @@ public class SpeechRecognitionService extends Service {
                 PowerManager.FULL_WAKE_LOCK | 
                 PowerManager.ACQUIRE_CAUSES_WAKEUP, "FullSpeechRecognitionWakeLock");
         
-        sr = SpeechRecognizer.createSpeechRecognizer(this);
-        sr.setRecognitionListener(new SpeechRecognitionListener());
+        File appDir;
+        try {
+            appDir = syncAssets(getApplicationContext());
+        } catch (IOException e) {
+            throw new RuntimeException("failed to synchronize assets", e);
+        }
+        
+        sr = defaultSetup()
+                .setAcousticModel(new File(appDir, "models/hmm/en-us-semi"))
+                .setDictionary(new File(appDir, "models/lm/cmu07a.dic"))
+                .setRawLogDir(appDir)
+                .setKeywordThreshold(1e-5f)
+                .getRecognizer();
+        sr.addListener(new SpeechRecognitionListener());
+        sr.addKeywordSearch("wakeup", KEY_PHRASE);
         
         Notification note = new Notification.Builder(getApplicationContext()).setPriority(Notification.PRIORITY_MIN).build();        
         startForeground(SERVICE_ID, note);
@@ -78,9 +86,7 @@ public class SpeechRecognitionService extends Service {
     }
     
     @SuppressLint("Wakelock")
-	protected void startListening() {
-        Log.e("Speech", "Start listening");
-        
+	protected void startListening() {        
         cancelTimeout();
         
         if (!isCharging || --batteryCheckDelay < 0) {
@@ -107,21 +113,14 @@ public class SpeechRecognitionService extends Service {
         if (!getForegroundPackage().equals(LAUNCH_TARGET)) {
             if (fullWakeLock.isHeld()) fullWakeLock.release();
             
-            if (!audioManager.isMusicActive()) {
-                timeoutTimer(5000);
-                
-                audioManager.setStreamMute(MUTE_STREAM, true);
-                
-                Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-                intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-                
-                sr.startListening(intent);
-                return;
-            }
+            timeoutTimer(5000);
+            
+            sr.stop();
+            sr.startListening("wakeup");
+        } else {
+            Log.e("Speech", "Waiting to close app");
+            timeoutTimer(2000);
         }
-        
-        Log.e("Speech", "Waiting to close app");
-        timeoutTimer(2000);
     }
     
     protected void cancelTimeout() {
@@ -180,7 +179,7 @@ public class SpeechRecognitionService extends Service {
         Log.e("Speech", "Destroy");
         
         if (sr != null) {
-            sr.destroy();
+            sr.stop();
         }
         
         if (partialWakeLock != null && partialWakeLock.isHeld()) {
@@ -195,77 +194,45 @@ public class SpeechRecognitionService extends Service {
     protected class SpeechRecognitionListener implements RecognitionListener {        
         @Override
         public void onBeginningOfSpeech() {
-            Log.d("Speech", "onBeginningOfSpeech");
+            Log.e("Speech", "onBeginningOfSpeech");
             
             cancelTimeout();
         }
     
         @Override
-        public void onBufferReceived(byte[] buffer) { }
-    
-        @Override
         public void onEndOfSpeech() {
-            Log.d("Speech", "onEndOfSpeech");
+            Log.e("Speech", "onEndOfSpeech");
         }
-    
+
         @Override
-        public void onError(int error) {
-            Log.d("Speech", "onError " + error);
+        public void onPartialResult(Hypothesis hypot) {            
+            String phrase = hypot.getHypstr().toLowerCase(Locale.ENGLISH);
             
-            /*
-            if (error == SpeechRecognizer.ERROR_NO_MATCH) {
-                Toast.makeText(getApplicationContext(), "Sorry, I didn't catch that.", Toast.LENGTH_SHORT).show();
+            Log.e("Speech", "onPartialResult = " + phrase);
+            
+            if (phrase.equals(KEY_PHRASE)) {
+                sr.stop();
+                
+                LAST_PACKAGE = getForegroundPackage();
+                if (!fullWakeLock.isHeld()) fullWakeLock.acquire();
+                
+                Intent googleNow = getPackageManager().getLaunchIntentForPackage(LAUNCH_TARGET);
+                googleNow.setAction("android.intent.action.VOICE_ASSIST");
+                startActivity(googleNow);
+                
+                timeoutTimer(4000);
+            } else {            
+                startListening();
             }
-            */
+        }
+
+        @Override
+        public void onResult(Hypothesis hypot) {  
+            String phrase = hypot.getHypstr().toLowerCase(Locale.ENGLISH);
+            
+            Log.e("Speech", "onResults = " + phrase);
             
             restartListening();
-        }
-    
-        @Override
-        public void onEvent(int eventType, Bundle params) { }
-    
-        @Override
-        public void onPartialResults(Bundle partialResults) { }
-    
-        @Override
-        public void onReadyForSpeech(Bundle params) {
-            Log.d("Speech", "onReadyForSpeech");
-            
-            audioManager.setStreamMute(MUTE_STREAM, false);
-        }
-    
-        @Override
-        public void onResults(Bundle results) {
-            Log.d("Speech", "onResults");
-            
-            ArrayList<String> strlist = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
-            if (strlist.size() > 0) {
-                String phrase = strlist.get(0).toLowerCase(Locale.ENGLISH); 
-                if (phrase.equals(KEY_PHRASE)) {
-                    // Toast.makeText(getApplicationContext(), "Loading...", Toast.LENGTH_SHORT).show();
-                    
-                    LAST_PACKAGE = getForegroundPackage();
-                    if (!fullWakeLock.isHeld()) fullWakeLock.acquire();
-                    
-                    Intent googleNow = getPackageManager().getLaunchIntentForPackage(LAUNCH_TARGET);
-                    googleNow.setAction("android.intent.action.VOICE_ASSIST");
-                    startActivity(googleNow);
-                    
-                    timeoutTimer(4000);
-                    return;
-                } else {
-                    for (String str: strlist) {
-                        Log.d("Speech", str);
-                    }
-                }
-            }
-            
-            startListening();
-        }
-    
-        @Override
-        public void onRmsChanged(float rmsdB) {
-            // Log.d("Speech", "onRmsChanged");
         }
     }
 }
