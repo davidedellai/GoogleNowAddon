@@ -18,6 +18,7 @@
     <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
     <uses-permission android:name="android.permission.GET_TASKS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:allowBackup="true"
@@ -39,10 +40,18 @@
             </intent-filter>
         </activity-alias>
         
-        <receiver android:name="com.hahn.googlenowaddon.GoogleSearchReceiver" >
+        <receiver android:name="com.hahn.googlenowaddon.GoogleSearchReceiver">
             <intent-filter>
                 <action android:name="com.mohammadag.googlesearchapi.NEW_SEARCH" />
             </intent-filter>
+        </receiver>
+        
+        <receiver android:name="com.hahn.googlenowaddon.AndroidBootReceiver" 
+            android:enabled="true"
+    		android:exported="true">
+            <intent-filter>
+		        <action android:name="android.intent.action.BOOT_COMPLETED" />
+		    </intent-filter>
         </receiver>
         
         <service android:name="com.hahn.googlenowaddon.speech.SpeechRecognitionService"/>
