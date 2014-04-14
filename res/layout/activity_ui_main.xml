@@ -24,5 +24,12 @@
         android:layout_height="wrap_content"
         android:onClick="setKeyPhrase"
         android:text="@string/set_key_phrase" />
+    
+    <CheckBox
+        android:id="@+id/require_battery"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:onClick="setRequireBattery"
+        android:text="@string/require_battery" />
 
 </LinearLayout>

@@ -5,16 +5,17 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map.Entry;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import android.util.Log;
 
 import com.hahn.googlenowaddon.Util;
 import com.hahn.googlenowaddon.Constants.Enum_Key;
 
-public class QueryMatcher {
-	private final static Pattern KEY_REGEX = Pattern.compile("(start)?\\s*key\\s*\\[?([_a-zA-Z]+)\\]?", Pattern.CASE_INSENSITIVE);
+public class QueryMatcher implements IMatcher {
+    private static final String KEY = "QueryMatcher";
+	private final static Pattern KEY_REGEX = Pattern.compile("(start )?key ?\\[?(\\w+)\\]?", Pattern.CASE_INSENSITIVE);
 	
 	private final List<String> contains_all, contains_one, not_contains, not_start_with, start_with_one;
 	private final HashMap<String, Enum_Key> keys, start_keys;
@@ -30,8 +31,7 @@ public class QueryMatcher {
 		keys = new HashMap<String, Enum_Key>();
 		start_keys = new HashMap<String, Enum_Key>();
 		
-		Logger log = Logger.getLogger("Now Addon");
-		log.info("Create new query matcher");
+		Log.i(KEY, "Create new query matcher");
 		
 		for (String def: defs) {
 			String[] type_params = def.split(":");
@@ -54,19 +54,25 @@ public class QueryMatcher {
 					Util.addAll(start_with_one, params);
 				} else if (type.matches("(?i)max length") && params.length == 1 && params[0].matches("\\d+")) {
 				    max_length = Integer.valueOf(params[0]);
+				} else if (checkOtherMatches(type, params)) {
+				    continue;
 				} else {
 					boolean isKey = checkForKey(type, params);
 					if (!isKey) {
-						log.log(Level.SEVERE, "Corrup definition '" + def + "'");
+					    Log.e(KEY, "Corrup definition '" + def + "'");
 					}
 				}
 			} else {
 				boolean isKey = checkForKey(type, null);
 				if (!isKey) {
-					log.log(Level.SEVERE, "Corrup definition '" + def + "'");
+				    Log.e(KEY, "Corrup definition '" + def + "'");
 				}
 			}
 		}
+	}
+	
+	protected boolean checkOtherMatches(String type, String[] params) {
+	    return false;
 	}
 	
 	private boolean checkForKey(String type, String[] params) {
@@ -155,6 +161,6 @@ public class QueryMatcher {
 			}
 		}
 		
-		return Enum_Key.Default;
+		return Enum_Key.Success;
 	}
 }

@@ -4,5 +4,6 @@
 
     <string name="key_phrase">Key Phrase</string>
     <string name="set_key_phrase">Set</string>
+    <string name="require_battery">Require battery</string>
 
 </resources>

@@ -7,6 +7,7 @@ import com.hahn.googlenowaddon.Constants.Enum_Key;
 import com.hahn.googlenowaddon.handlers.BluetoothHandler;
 import com.hahn.googlenowaddon.handlers.MobileDataHandler;
 import com.hahn.googlenowaddon.handlers.QueryMatcher;
+import com.hahn.googlenowaddon.handlers.QueryReplier;
 import com.hahn.googlenowaddon.handlers.WifiHandler;
 import com.hahn.googlenowaddon.speech.SpeechRecognitionService;
 
@@ -74,6 +75,13 @@ public class GoogleSearchReceiver extends BroadcastReceiver {
                 "CONTAINS ONE : minimize, exit",
                 
                 "MAX LENGTH   : 1"
+        }),
+        
+        THANK_YOU = new QueryReplier(new String[] {
+                "STARTS WITH : thank you, thanks",
+                "MAX LENGTH  : 3",
+                
+                "REPLY : sure thing, no problem, you're welcome"
         });
 		
 	
@@ -85,6 +93,10 @@ public class GoogleSearchReceiver extends BroadcastReceiver {
 		String queryText = intent.getStringExtra(GoogleSearchApi.KEY_QUERY_TEXT);
 		queryText = queryText.toLowerCase(Locale.ENGLISH);
 
+		// Replies
+		THANK_YOU.match(queryText);
+		
+		// Handers
 		key = MEDIA_CONTROL.match(queryText);
 		if (key != null) {
 		    switch (key) {
@@ -118,7 +130,7 @@ public class GoogleSearchReceiver extends BroadcastReceiver {
 		}
 
 		key = VOLUME_CONTROL.match(queryText);
-		if (key != null && key != Enum_Key.Default) {
+		if (key != null && key != Enum_Key.Success) {
 			AudioManager audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
 			switch(key) {
 			case Up:
