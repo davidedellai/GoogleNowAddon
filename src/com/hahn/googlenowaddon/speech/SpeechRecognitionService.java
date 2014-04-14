@@ -24,7 +24,10 @@ import android.os.PowerManager.WakeLock;
 import android.speech.tts.TextToSpeech;
 import android.speech.tts.TextToSpeech.OnInitListener;
 import android.util.Log;
+import android.widget.Toast;
 
+import com.hahn.googlenowaddon.PowerStateReceiver;
+import com.hahn.googlenowaddon.R;
 import com.hahn.googlenowaddon.Util;
 
 import edu.cmu.pocketsphinx.Hypothesis;
@@ -33,6 +36,7 @@ import edu.cmu.pocketsphinx.SpeechRecognizer;
 
 public class SpeechRecognitionService extends Service implements
         OnInitListener, OnAudioFocusChangeListener {
+    public static final String TAG = "Speech";
     public static final int SERVICE_ID = 1524;
     public static final String LAUNCH_TARGET = "com.google.android.googlequicksearchbox";
 
@@ -50,9 +54,8 @@ public class SpeechRecognitionService extends Service implements
 
     /* Battery */
     public boolean require_charge = true;
+    public boolean isCharging;
     private WakeLock partialWakeLock, fullWakeLock;
-    private boolean isCharging;
-    private int batteryCheckDelay;
 
     /* Timeout */
     private Timer timeoutTimer;
@@ -77,6 +80,8 @@ public class SpeechRecognitionService extends Service implements
         activityManager = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
         powerManager = (PowerManager) getSystemService(POWER_SERVICE);
 
+        isCharging = Util.isCharging(getApplicationContext());
+        
         tts = new TextToSpeech(this, this);
         tts.setSpeechRate(0.9f);
 
@@ -105,18 +110,11 @@ public class SpeechRecognitionService extends Service implements
         cancelTimeout();
 
         // Check battery
-        if (require_charge && (!isCharging || --batteryCheckDelay < 0)) {
-            isCharging = Util.isCharging(getApplicationContext());
-            if (isCharging) {
-                batteryCheckDelay = 3;
-
-                if (!partialWakeLock.isHeld()) partialWakeLock.acquire();
-            } else {
-                if (partialWakeLock.isHeld()) partialWakeLock.release();
-                timeoutTimer(10000);
-
-                return;
-            }
+        if (require_charge && !isCharging) {    
+            if (fullWakeLock.isHeld()) fullWakeLock.release();
+            if (partialWakeLock.isHeld()) partialWakeLock.release();
+            
+            return;
         }
 
         // Start listening
@@ -160,7 +158,7 @@ public class SpeechRecognitionService extends Service implements
         return activityManager.getRunningTasks(1).get(0).baseActivity.getPackageName();
     }
 
-    protected void restartListening() {
+    public void restartListening() {
         mainThreadHandler.post(new Runnable() {
             @Override
             public void run() {
@@ -172,7 +170,23 @@ public class SpeechRecognitionService extends Service implements
     }
 
     @Override
-    public int onStartCommand(Intent i, int flags, int startId) {
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        if (intent.getBooleanExtra(PowerStateReceiver.START_CHARING, false)) {
+            if (require_charge && !isCharging) {
+                Toast.makeText(getApplicationContext(), R.string.str_resume_now, Toast.LENGTH_LONG).show();
+            }
+            
+            isCharging = true;
+            restartListening();
+        } else if (intent.getBooleanExtra(PowerStateReceiver.STOP_CHARING, false)) {
+            if (require_charge && isCharging) {
+                Toast.makeText(getApplicationContext(), R.string.str_pause_now, Toast.LENGTH_LONG).show();
+            }
+            
+            isCharging = false;
+            restartListening();
+        }
+        
         return Service.START_STICKY;
     }
 

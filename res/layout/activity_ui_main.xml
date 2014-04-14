@@ -10,26 +10,26 @@
         android:id="@+id/lbl_key_phrase"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
-        android:text="@string/key_phrase" />
+        android:text="@string/lbl_key_phrase" />
         
     <EditText
         android:id="@+id/key_phrase"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
-        android:hint="@string/key_phrase" />
+        android:hint="@string/lbl_key_phrase" />
 
     <Button
         android:id="@+id/set_key_phrase"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
         android:onClick="setKeyPhrase"
-        android:text="@string/set_key_phrase" />
+        android:text="@string/btn_set_key_phrase" />
     
     <CheckBox
         android:id="@+id/require_battery"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
         android:onClick="setRequireBattery"
-        android:text="@string/require_battery" />
+        android:text="@string/chk_require_charger" />
 
 </LinearLayout>

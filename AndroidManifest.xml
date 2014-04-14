@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.hahn.googlenowaddon"
     android:versionCode="1"
@@ -5,10 +6,9 @@
 
     <uses-sdk
         android:minSdkVersion="16"
-        android:targetSdkVersion="18" />
-    
+        android:targetSdkVersion="19" />
+
     <uses-permission android:name="com.mohammadag.googlesearchapi.permission.ACCESS_GGOGLE_SEARCH_API" />
-    
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
@@ -26,39 +26,47 @@
         android:label="@string/app_name"
         android:theme="@style/AppTheme" >
         <activity
-            android:name="com.hahn.googlenowaddon.MainActivity"
+            android:name=".MainActivity"
             android:label="@string/app_name" >
             <intent-filter>
                 <category android:name="android.intent.category.LAUNCHER" />
+
                 <action android:name="android.intent.action.MAIN" />
             </intent-filter>
         </activity>
-        
+
         <activity-alias
-            android:name="com.hahn.googlenowaddon.MainActivity-Alias"
+            android:name=".MainActivity-Alias"
             android:label="@string/app_name"
-            android:targetActivity="com.hahn.googlenowaddon.MainActivity" >
+            android:targetActivity=".MainActivity" >
             <intent-filter>
                 <category android:name="android.intent.category.LAUNCHER" />
+
                 <action android:name="android.intent.action.MAIN" />
             </intent-filter>
         </activity-alias>
-        
-        <receiver android:name="com.hahn.googlenowaddon.GoogleSearchReceiver">
+
+        <receiver android:name=".GoogleSearchReceiver" >
             <intent-filter>
                 <action android:name="com.mohammadag.googlesearchapi.NEW_SEARCH" />
             </intent-filter>
         </receiver>
-        
-        <receiver android:name="com.hahn.googlenowaddon.AndroidBootReceiver" 
+        <receiver
+            android:name=".AndroidBootReceiver"
             android:enabled="true"
-    		android:exported="true">
+            android:exported="true" >
             <intent-filter>
-		        <action android:name="android.intent.action.BOOT_COMPLETED" />
-		    </intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
         </receiver>
-        
-        <service android:name="com.hahn.googlenowaddon.speech.SpeechRecognitionService"/>
+        <receiver android:name=".PowerStateReceiver" >
+            <intent-filter>
+                <action android:name="android.intent.action.ACTION_POWER_CONNECTED" />
+                <action android:name="android.intent.action.ACTION_POWER_DISCONNECTED" />
+            </intent-filter>
+        </receiver>
+
+        <service android:name="com.hahn.googlenowaddon.speech.SpeechRecognitionService" />
     </application>
 
 </manifest>

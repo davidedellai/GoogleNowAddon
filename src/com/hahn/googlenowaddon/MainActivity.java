@@ -13,7 +13,6 @@ import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.IBinder;
-import android.util.Log;
 import android.view.View;
 import android.widget.CheckBox;
 import android.widget.EditText;
@@ -30,14 +29,14 @@ public class MainActivity extends Activity {
             SpeechRecognitionService.MyBinder b = (SpeechRecognitionService.MyBinder) binder;
             service = b.getService();
             
-            Log.e("Main", "Service bound");
+            // Log.e("Main", "Service bound");
             recoverKeyPhrase();
         }
 
         public void onServiceDisconnected(ComponentName className) {
             saveKeyPharse();
             
-            Log.e("Main", "Service disconnected");
+            // Log.e("Main", "Service disconnected");
             service = null;
         }
     };
@@ -81,7 +80,16 @@ public class MainActivity extends Activity {
     public void setRequireBattery(View view) {
         if (service != null) {
             CheckBox checkbox = (CheckBox) view;
-            service.require_charge = checkbox.isChecked();
+            boolean require_charge = checkbox.isChecked();
+            
+            if (require_charge && !service.isCharging) {
+                Toast.makeText(this, R.string.str_pause_now, Toast.LENGTH_SHORT).show();
+            } else if (!require_charge && !service.isCharging) {
+                Toast.makeText(this, R.string.str_resume_now, Toast.LENGTH_SHORT).show();
+            }
+            
+            service.require_charge = require_charge;
+            service.restartListening();
         } else {
             Toast.makeText(this, "Failed to update Require Charge", Toast.LENGTH_SHORT).show();
         }

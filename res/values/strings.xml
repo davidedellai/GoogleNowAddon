@@ -2,8 +2,10 @@
 
     <string name="app_name">GoogleNowAddon</string>
 
-    <string name="key_phrase">Key Phrase</string>
-    <string name="set_key_phrase">Set</string>
-    <string name="require_battery">Require battery</string>
+    <string name="lbl_key_phrase">Key Phrase</string>
+    <string name="btn_set_key_phrase">Set</string>
+    <string name="chk_require_charger">Require chager</string>
+    <string name="str_resume_now">Google Now Addon Resumed</string>
+    <string name="str_pause_now">Google Now Addon Paused</string>
 
 </resources>
