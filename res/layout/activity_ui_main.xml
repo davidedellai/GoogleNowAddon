@@ -4,19 +4,21 @@
     android:layout_width="fill_parent"
     android:layout_height="fill_parent"
     android:orientation="vertical"
+    android:label="@string/lbl_title"
     tools:context=".MainActivity" >
 
     <TextView
         android:id="@+id/lbl_key_phrase"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
-        android:text="@string/lbl_key_phrase" />
+        android:text="@string/lbl_key_phrase"
+        android:textSize="18sp" />
         
     <EditText
         android:id="@+id/key_phrase"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
-        android:hint="@string/lbl_key_phrase" />
+        android:hint="@string/str_key_phrase" />
 
     <Button
         android:id="@+id/set_key_phrase"

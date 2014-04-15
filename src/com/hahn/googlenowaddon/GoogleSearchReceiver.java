@@ -47,6 +47,12 @@ public class GoogleSearchReceiver extends BroadcastReceiver {
 				"KEY Min   : min, low, minimum"
 		}),
 		
+		MUTE_CONTROL = new QueryMatcher(new String[] {
+		        "STARTS WITH : mute, volume mute",
+		        
+		        "MAX LENGTH  : 3"
+		}),
+		
 		WIFI_CONTROL = new QueryMatcher(new String[] {
 		        "CONTAINS : wifi",
 		        
@@ -146,6 +152,13 @@ public class GoogleSearchReceiver extends BroadcastReceiver {
 				audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, 1, AudioManager.FLAG_SHOW_UI);
 				return;
 			}
+		}
+		
+		key = MUTE_CONTROL.match(queryText);
+		if (key != null) {
+		    AudioManager audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
+		    audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, 0, AudioManager.FLAG_SHOW_UI);
+            return;
 		}
 		
 		key = WIFI_CONTROL.match(queryText);

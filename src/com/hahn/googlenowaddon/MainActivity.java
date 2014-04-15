@@ -82,9 +82,9 @@ public class MainActivity extends Activity {
             CheckBox checkbox = (CheckBox) view;
             boolean require_charge = checkbox.isChecked();
             
-            if (require_charge && !service.isCharging) {
+            if (require_charge && !service.charging) {
                 Toast.makeText(this, R.string.str_pause_now, Toast.LENGTH_SHORT).show();
-            } else if (!require_charge && !service.isCharging) {
+            } else if (!require_charge && !service.charging) {
                 Toast.makeText(this, R.string.str_resume_now, Toast.LENGTH_SHORT).show();
             }
             
