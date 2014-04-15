@@ -91,7 +91,7 @@ public class SpeechRecognitionService extends Service implements
 
         charging = Util.isCharging(context);
         partialWakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "SpeechRecognitionWakeLock");
-        fullWakeLock = powerManager.newWakeLock(PowerManager.SCREEN_BRIGHT_WAKE_LOCK | PowerManager.FULL_WAKE_LOCK | PowerManager.ACQUIRE_CAUSES_WAKEUP, "FullSpeechRecognitionWakeLock");
+        fullWakeLock = powerManager.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK | PowerManager.ACQUIRE_CAUSES_WAKEUP, "FullSpeechRecognitionWakeLock");
 
         tts = new TextToSpeech(this, this);
         tts.setSpeechRate(0.9f);
@@ -175,8 +175,6 @@ public class SpeechRecognitionService extends Service implements
         // Start listening
         if (!powerManager.isScreenOn() || !getForegroundPackage().equals(LAUNCH_TARGET)) {
             if (fullWakeLock.isHeld()) fullWakeLock.release();
-
-            timeoutTimer(5000);
 
             sr.stop();
 

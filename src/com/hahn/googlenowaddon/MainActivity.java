@@ -70,6 +70,7 @@ public class MainActivity extends Activity {
         if (service != null) {
             EditText text = (EditText) findViewById(R.id.key_phrase);
             service.key_phrase = text.getText().toString();
+            service.restartListening();
             
             Toast.makeText(this, "Key Phrase Set", Toast.LENGTH_SHORT).show();
         } else {
@@ -81,12 +82,6 @@ public class MainActivity extends Activity {
         if (service != null) {
             CheckBox checkbox = (CheckBox) view;
             boolean require_charge = checkbox.isChecked();
-            
-            if (require_charge && !service.charging) {
-                Toast.makeText(this, R.string.str_pause_now, Toast.LENGTH_SHORT).show();
-            } else if (!require_charge && !service.charging) {
-                Toast.makeText(this, R.string.str_resume_now, Toast.LENGTH_SHORT).show();
-            }
             
             service.require_charge = require_charge;
             service.restartListening();
