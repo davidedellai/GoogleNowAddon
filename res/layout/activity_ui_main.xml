@@ -31,7 +31,7 @@
         android:id="@+id/require_battery"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
-        android:onClick="setRequireBattery"
+        android:onClick="setRequireCharge"
         android:text="@string/chk_require_charger" />
 
 </LinearLayout>

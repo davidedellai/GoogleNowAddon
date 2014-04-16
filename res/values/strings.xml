@@ -8,7 +8,11 @@
     <string name="str_resume_now">Google Now Addon Resumed</string>
     <string name="str_pause_now">Google Now Addon Paused</string>
     <string name="str_key_phrase">Key Phrase</string>
+    <string name="str_key_phrase_updated">Key Phrase Updated</string>
+    <string name="str_require_charge_updated">Require Charge Updated</string>
     <string name="lbl_title">Google Now Addon</string>
     <string name="str_start_now">Google Now Addon Started</string>
+    <string name="str_stop_now">Google Now Addon Stopped</string>
+    <string name="str_starting_now">Starting Google Now Addon</string>
 
 </resources>

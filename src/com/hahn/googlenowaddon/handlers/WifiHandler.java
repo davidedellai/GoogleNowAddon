@@ -41,6 +41,6 @@ public class WifiHandler {
         }
 
         Toast.makeText(context, visualText, Toast.LENGTH_SHORT).show();
-        SpeechRecognitionService.speak(speakText);
+        SpeechRecognitionService.speak(context, speakText);
     }
 }

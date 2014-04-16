@@ -43,6 +43,6 @@ public class BluetoothHandler {
             return;
         }
 
-        SpeechRecognitionService.speak(speakText);
+        SpeechRecognitionService.speak(context, speakText);
     }
 }

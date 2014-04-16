@@ -8,10 +8,11 @@ import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import android.content.Context;
 import android.util.Log;
 
-import com.hahn.googlenowaddon.Util;
 import com.hahn.googlenowaddon.Constants.Enum_Key;
+import com.hahn.googlenowaddon.Util;
 
 public class QueryMatcher implements IMatcher {
     private static final String KEY = "QueryMatcher";
@@ -96,12 +97,7 @@ public class QueryMatcher implements IMatcher {
 		return false;
 	}
 	
-	/**
-	 * Checks if the given query matches this
-	 * @param queryText The query to check
-	 * @return `null` failed, `KEY.Success` general success, anything else is a set key 
-	 */
-	public Enum_Key match(String queryText) {
+	public Enum_Key match(Context context, String queryText) {
 	    // Check for longer than max length
 	    if (max_length > 0) {
 	        if (queryText.split(" ").length > max_length) {

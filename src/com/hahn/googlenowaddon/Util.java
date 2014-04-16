@@ -30,6 +30,6 @@ public class Util {
 	public static boolean isCharging(Context context) {
         Intent intent = context.registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
         int plugged = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1);
-        return plugged == BatteryManager.BATTERY_PLUGGED_AC || plugged == BatteryManager.BATTERY_PLUGGED_USB;
+        return plugged == BatteryManager.BATTERY_PLUGGED_AC; // || plugged == BatteryManager.BATTERY_PLUGGED_USB;
     }
 }

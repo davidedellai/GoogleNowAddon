@@ -7,6 +7,8 @@ import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import android.content.Context;
+
 import com.hahn.googlenowaddon.Constants.Enum_Key;
 import com.hahn.googlenowaddon.speech.SpeechRecognitionService;
 
@@ -64,21 +66,21 @@ public class QueryReplier extends QueryMatcher {
     }
 
     @Override
-    public Enum_Key match(String queryText) {
-        Enum_Key key = super.match(queryText);
+    public Enum_Key match(Context context, String queryText) {
+        Enum_Key key = super.match(context, queryText);
         
         if (key != null) {
             // Try with given key
             List<String> list = replies.get(key);
             if (list != null) {
                 String mss = list.get(rand.nextInt(list.size()));
-                SpeechRecognitionService.speak(mss);
+                SpeechRecognitionService.speak(context, mss);
             } else {
                 // Try with default key
                 list = replies.get(Enum_Key.Success);
                 if (list != null) {
                     String mss = list.get(rand.nextInt(list.size()));
-                    SpeechRecognitionService.speak(mss);
+                    SpeechRecognitionService.speak(context, mss);
                 }
             }
         }

@@ -100,10 +100,10 @@ public class GoogleSearchReceiver extends BroadcastReceiver {
 		queryText = queryText.toLowerCase(Locale.ENGLISH);
 
 		// Replies
-		THANK_YOU.match(queryText);
+		THANK_YOU.match(context, queryText);
 		
 		// Handers
-		key = MEDIA_CONTROL.match(queryText);
+		key = MEDIA_CONTROL.match(context, queryText);
 		if (key != null) {
 		    switch (key) {
 		    case Resume:
@@ -121,7 +121,7 @@ public class GoogleSearchReceiver extends BroadcastReceiver {
 			}
 		}
 
-		key = TRACK_CONTROL.match(queryText);
+		key = TRACK_CONTROL.match(context, queryText);
 		if (key != null) {
 			switch (key) {
 			case Next:
@@ -135,7 +135,7 @@ public class GoogleSearchReceiver extends BroadcastReceiver {
 			}
 		}
 
-		key = VOLUME_CONTROL.match(queryText);
+		key = VOLUME_CONTROL.match(context, queryText);
 		if (key != null && key != Enum_Key.Success) {
 			AudioManager audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
 			switch(key) {
@@ -154,30 +154,30 @@ public class GoogleSearchReceiver extends BroadcastReceiver {
 			}
 		}
 		
-		key = MUTE_CONTROL.match(queryText);
+		key = MUTE_CONTROL.match(context, queryText);
 		if (key != null) {
 		    AudioManager audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
 		    audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, 0, AudioManager.FLAG_SHOW_UI);
             return;
 		}
 		
-		key = WIFI_CONTROL.match(queryText);
+		key = WIFI_CONTROL.match(context, queryText);
 		if (key != null) {
 		    WifiHandler.handleStateChange(context, key);
 		    return;
 		}
 		
-		key = BLUETOOTH_CONTROL.match(queryText);
+		key = BLUETOOTH_CONTROL.match(context, queryText);
 		if (key != null) {
 		    BluetoothHandler.handleStateChange(context, key);
 		}
 		
-		key = DATA_CONTROL.match(queryText);
+		key = DATA_CONTROL.match(context, queryText);
 		if (key != null) {
             MobileDataHandler.handleStateChange(context, key);
         }
 		
-		key = MINIMIZE.match(queryText);
+		key = MINIMIZE.match(context, queryText);
 		if (key != null) {
 		    Log.e("Reciever", SpeechRecognitionService.LAST_PACKAGE);
 		    
@@ -206,7 +206,7 @@ public class GoogleSearchReceiver extends BroadcastReceiver {
 			int level = Integer.valueOf(m.group(1));
 			if (level >= 0 && level <= audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)) {
 				audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, level, AudioManager.FLAG_SHOW_UI);
-				SpeechRecognitionService.speak("Set volume to " + level);
+				SpeechRecognitionService.speak(context, "Set volume to " + level);
 			}
 			
 			return;

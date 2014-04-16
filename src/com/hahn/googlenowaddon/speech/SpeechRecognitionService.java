@@ -16,6 +16,7 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.media.AudioManager;
 import android.media.AudioManager.OnAudioFocusChangeListener;
 import android.os.Binder;
@@ -28,7 +29,10 @@ import android.speech.tts.TextToSpeech.OnInitListener;
 import android.util.Log;
 import android.widget.Toast;
 
-import com.hahn.googlenowaddon.PowerStateReceiver;
+import com.hahn.googlenowaddon.Constants.Preferences;
+import com.hahn.googlenowaddon.Constants.SpeechRecognitionServiceExtras;
+import com.hahn.googlenowaddon.GoogleSearchApi;
+import com.hahn.googlenowaddon.MainActivity;
 import com.hahn.googlenowaddon.R;
 import com.hahn.googlenowaddon.Util;
 
@@ -38,9 +42,7 @@ import edu.cmu.pocketsphinx.SpeechRecognizer;
 
 public class SpeechRecognitionService extends Service implements
         OnInitListener, OnAudioFocusChangeListener {
-    public static final String TAG = "Speech";
-    public static final String TOGGLE_PAUSED = "togglePaused";
-    public static final String OPEN_UI = "openUI";
+    public static final String TAG = "SpeechRecognitionService";
     
     public static final int SERVICE_ID = 1524;
     public static final String LAUNCH_TARGET = "com.google.android.googlequicksearchbox";
@@ -48,28 +50,30 @@ public class SpeechRecognitionService extends Service implements
     public static String LAST_PACKAGE = LAUNCH_TARGET;
 
     /* Management */    
-    private ActivityManager activityManager;
     private PowerManager powerManager;
-    
+    private ActivityManager activityManager;
     private final Binder binder = new MyBinder();
 
     /* Text to speech */
     private static TextToSpeech tts;
     private AudioManager audioManager;
 
-    /* Battery */
-    public boolean require_charge = true;
-    private boolean wasRunning = true;
-    public boolean charging;
-    private WakeLock partialWakeLock, fullWakeLock;
-
     /* Timeout */
     private Timer timeoutTimer;
     private Handler mainThreadHandler;
+    
+    /* Battery */
+    private boolean require_charge;
+    private WakeLock partialWakeLock, fullWakeLock;
 
     /* Speech recognition */
-    public String key_phrase = "okay google";
-    private boolean paused;
+    private File appDir;
+    private String key_phrase;
+    
+    private boolean isPaused;
+    private boolean isStopRequested;
+    private boolean hasStarted;
+    private boolean ranLastLoop;
     private SpeechRecognizer sr;
 
     @SuppressWarnings("deprecation")
@@ -77,29 +81,34 @@ public class SpeechRecognitionService extends Service implements
     public void onCreate() {
         super.onCreate();
 
-        Context context = getApplicationContext();
+        Log.e(TAG, "onCreate");
+        Toast.makeText(getApplicationContext(), R.string.str_starting_now, Toast.LENGTH_SHORT).show();
         
-        Log.e("Speech", "Create service");
-
         mainThreadHandler = new Handler();
 
+        // Get managers
         audioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
         audioManager.requestAudioFocus(this, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN);
 
         activityManager = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
         powerManager = (PowerManager) getSystemService(POWER_SERVICE);
 
-        charging = Util.isCharging(context);
+        // Create wake locks
         partialWakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "SpeechRecognitionWakeLock");
         fullWakeLock = powerManager.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK | PowerManager.ACQUIRE_CAUSES_WAKEUP, "FullSpeechRecognitionWakeLock");
 
+        // Create tts
         tts = new TextToSpeech(this, this);
         tts.setSpeechRate(0.9f);
         
-        // Create speech recognition
-        File appDir;
+        // Refresh prefs
+        SharedPreferences prefs = MainActivity.getPrefs(this);
+        key_phrase = prefs.getString(Preferences.KEY_PHRASE_KEY, Preferences.DEFAULT_KEY_PHRASE);
+        require_charge = prefs.getBoolean(Preferences.KEY_REQUIRE_CHARGER, true);
+        
+        // Load speech recognition
         try {
-            appDir = syncAssets(context);
+            appDir = syncAssets(this);
             
             sr = defaultSetup().setAcousticModel(new File(appDir, "models/hmm/en-us-semi")).setDictionary(new File(appDir, "models/lm/cmu07a.dic")).setRawLogDir(appDir).setKeywordThreshold(1e-5f).getRecognizer();
             sr.addListener(new SpeechRecognitionListener());
@@ -107,84 +116,126 @@ public class SpeechRecognitionService extends Service implements
         } catch (IOException e) {
             throw new RuntimeException("failed to synchronize assets", e);
         }
-
-        // Create notification
-        updateNotification();
-        
-        Toast.makeText(getApplicationContext(), R.string.str_start_now, Toast.LENGTH_SHORT).show();
-
-        // Start speech recognition
-        startListening();
     }
     
-    private void updateNotification() {
+    public void setRequiresCharge(boolean state) {
+        if (state != require_charge) {
+            Log.e(TAG, "setRequiresCharge");
+            
+            require_charge = state;
+            
+            if (shouldStop()) {
+                requestStop();
+            } else {
+                requestStart();
+            }
+        }
+    }
+    
+    public void setKeyPhrase(String phrase) {
+        key_phrase = phrase;
+        restartListening();
+    }
+    
+    protected boolean shouldStop() {
+        return isStopRequested || (require_charge && !Util.isCharging(this));
+    }
+    
+    private void requestStop() {
+        Log.e(TAG, "Requesting stop");
+        
+        isStopRequested = true;
+        startTimeoutTimer(250);
+    }
+    
+    private synchronized void requestStart() {
+        if (shouldStop()) return;
+        
+        hasStarted = true;
+        
+        updateNotification();
+        restartListening();
+    }
+    
+    protected void updateNotification() {
         Log.e(TAG, "Update notification");
         
-        String text = (waitingForCharge() ? "Waiting for Charger" : (paused ? "Paused" : "Running"));
+        Intent clickIntent = new Intent(this, SpeechRecognitionService.class);
+        clickIntent.putExtra(SpeechRecognitionServiceExtras.TOGGLE_PAUSED, true);
         
-        Context context = getApplicationContext();
-        Intent clickIntent = new Intent(context, SpeechRecognitionService.class);
-        clickIntent.putExtra(TOGGLE_PAUSED, true);
+        PendingIntent pendingClickIntent = PendingIntent.getService(this, 0, clickIntent, PendingIntent.FLAG_UPDATE_CURRENT);
         
-        PendingIntent pendingClickIntent = PendingIntent.getService(context, 0, clickIntent, PendingIntent.FLAG_UPDATE_CURRENT);
-        
-        Notification note = new Notification.Builder(getApplicationContext())
+        Notification note = new Notification.Builder(this)
                 .setPriority(Notification.PRIORITY_MIN)
                 .setSmallIcon(R.drawable.ic_launcher)
                 .setContentTitle("Google Now Addon")
-                .setContentText(text)
+                .setContentText((isPaused ? "Paused" : "Running"))
                 .setContentIntent(pendingClickIntent)
                 .build();
 
         startForeground(SERVICE_ID, note);
     }
-    
-    public boolean isPaused() {
-        return paused || waitingForCharge();
-    }
-    
-    public boolean waitingForCharge() {
-        return require_charge && !charging;
-    }
 
     @SuppressLint("Wakelock")
-    protected void startListening() {
+    protected void startListening() {       
         cancelTimeout();
+        
+        // Check if stop requested
+        if (isStopRequested) {
+            Log.e(TAG, "Performing requested stop");
+            
+            if (hasStarted) {
+                Toast.makeText(this, R.string.str_stop_now, Toast.LENGTH_SHORT).show();
+            }
+            
+            // Update flags
+            isPaused = false;
+            hasStarted = false;
+            ranLastLoop = false;
+            isStopRequested = false;
+            
+            stopForeground(true);
+            stopSelf();
+            
+            return;
+        } else if (!hasStarted) {
+            return;
+        }
+        
+        sr.stop();
 
         // Check paused
-        if (isPaused()) {    
+        if (isPaused) {    
             if (fullWakeLock.isHeld()) fullWakeLock.release();
             if (partialWakeLock.isHeld()) partialWakeLock.release();
             
-            if (wasRunning) {
-                wasRunning = false;
+            if (ranLastLoop) {
+                ranLastLoop = false;
                 
-                Toast.makeText(getApplicationContext(), R.string.str_pause_now, Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, R.string.str_pause_now, Toast.LENGTH_SHORT).show();
             }
             
             return;
         }
         
         // Check if was unpaused
-        if (!wasRunning) {
-            wasRunning = true;
+        if (!ranLastLoop) {
+            ranLastLoop = true;
             
-            Toast.makeText(getApplicationContext(), R.string.str_resume_now, Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.str_start_now, Toast.LENGTH_SHORT).show();
         }
 
         // Start listening
         if (!powerManager.isScreenOn() || !getForegroundPackage().equals(LAUNCH_TARGET)) {
             if (fullWakeLock.isHeld()) fullWakeLock.release();
 
-            sr.stop();
-
             sr.addKeywordSearch("wakeup", key_phrase);
             sr.startListening("wakeup");
         } else {
             if (!fullWakeLock.isHeld()) fullWakeLock.acquire();
 
-            Log.e("Speech", "Waiting to close app");
-            timeoutTimer(2000);
+            Log.e(TAG, "Waiting to close app");
+            startTimeoutTimer(2000);
         }
     }
 
@@ -195,7 +246,7 @@ public class SpeechRecognitionService extends Service implements
         }
     }
 
-    protected void timeoutTimer(int delay) {
+    public void startTimeoutTimer(int delay) {
         cancelTimeout();
 
         timeoutTimer = new Timer();
@@ -211,7 +262,6 @@ public class SpeechRecognitionService extends Service implements
         mainThreadHandler.post(new Runnable() {
             @Override
             public void run() {
-                sr.cancel();
                 startListening();
             }
 
@@ -222,20 +272,30 @@ public class SpeechRecognitionService extends Service implements
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.e(TAG, "onStartCommand");
         
-        if (intent.getBooleanExtra(PowerStateReceiver.START_CHARING, false)) {
-            charging = true;
-        } else if (intent.getBooleanExtra(PowerStateReceiver.STOP_CHARING, false)) {
-            charging = false;
-        } else if (intent.getBooleanExtra(TOGGLE_PAUSED, false)) {
-            paused = !paused;
-        } else if (intent.getBooleanExtra(OPEN_UI, false)) {
-            // TODO
+        boolean stopCharging  = intent.getBooleanExtra(SpeechRecognitionServiceExtras.STOP_CHARING, false);
+        boolean togglePaused  = intent.getBooleanExtra(SpeechRecognitionServiceExtras.TOGGLE_PAUSED, false);
+             
+        if (stopCharging) {
+            // If stopped charging and needed stop service
+            if (require_charge && !Util.isCharging(this)) {
+                requestStop();
+            }
+        } else if (togglePaused) {
+            // Toggle paused
+            isPaused = !isPaused;
+            
+            if (hasStarted) {
+                updateNotification();
+                restartListening();
+            }
         } else {
-            return Service.START_STICKY;
+         // Show message if first start and should keep running
+            if (shouldStop()) {
+                requestStop();
+            } else if (!hasStarted) {
+                requestStart();
+            }
         }
-        
-        updateNotification();
-        restartListening();
         
         return Service.START_STICKY;
     }
@@ -252,9 +312,11 @@ public class SpeechRecognitionService extends Service implements
         }
     }
 
-    public static void speak(String str) {
+    public static void speak(Context context, String str) {
         if (tts != null) {
             tts.speak(str, TextToSpeech.QUEUE_FLUSH, null);
+        } else {
+            GoogleSearchApi.speak(context, str);
         }
     }
 
@@ -264,6 +326,8 @@ public class SpeechRecognitionService extends Service implements
             Log.e(TAG, "Lost audio focus");
         } else if (AudioManager.AUDIOFOCUS_GAIN == focus) {
             Log.e(TAG, "Got audio focus");
+        } else {
+            Log.e(TAG, "Audio focus changed?");
         }
     }
 
@@ -274,8 +338,10 @@ public class SpeechRecognitionService extends Service implements
 
     @Override
     public void onDestroy() {
-        Log.e("Speech", "Destroy");
+        Log.e(TAG, "Destroy");
 
+        stopForeground(true);
+        
         if (sr != null) {
             sr.stop();
         }
@@ -301,21 +367,17 @@ public class SpeechRecognitionService extends Service implements
     class SpeechRecognitionListener implements RecognitionListener {
         @Override
         public void onBeginningOfSpeech() {
-            // Log.e("Speech", "onBeginningOfSpeech");
-
             cancelTimeout();
         }
 
         @Override
-        public void onEndOfSpeech() {
-            // Log.e("Speech", "onEndOfSpeech");
-        }
+        public void onEndOfSpeech() { }
 
         @Override
         public void onPartialResult(Hypothesis hypot) {
             String phrase = hypot.getHypstr().toLowerCase(Locale.ENGLISH);
 
-            Log.e("Speech", "onPartialResult = " + phrase);
+            Log.e(TAG, "onPartialResult = " + phrase);
 
             if (phrase.equals(key_phrase)) {
                 sr.stop();
@@ -327,7 +389,7 @@ public class SpeechRecognitionService extends Service implements
                 googleNow.setAction("android.intent.action.VOICE_ASSIST");
                 startActivity(googleNow);
 
-                timeoutTimer(4000);
+                startTimeoutTimer(4000);
             } else {
                 startListening();
             }
