@@ -1,6 +1,8 @@
 package com.hahn.googlenowaddon;
 
 public class Constants {
+    public static final String GROUP_NAME = "com.hahn.googlenowaddon.SEARCH_GROUP";
+    
     public static class Preferences {
         public static final String KEY = "com.hahn.googlenowaddon",
                                    KEY_PHRASE_KEY = "com.hahn.googlenowaddon.key_phrase",
@@ -15,11 +17,11 @@ public class Constants {
         
     }
     
-	public enum Enum_Key {
-		Success, 
-		Resume, Pause, Stop,
-		Next, Previous,
-		Up, Down, Max, Min,
-		On, Off, Toggle
-	}
+    public enum Enum_Key {
+        Success, 
+        Resume, Pause, Stop,
+        Next, Previous,
+        Up, Down, Max, Min,
+        On, Off, Toggle
+    }
 }

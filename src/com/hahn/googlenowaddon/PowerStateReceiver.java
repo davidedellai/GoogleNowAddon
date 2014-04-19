@@ -5,7 +5,6 @@ import android.content.Context;
 import android.content.Intent;
 
 import com.hahn.googlenowaddon.Constants.SpeechRecognitionServiceExtras;
-import com.hahn.googlenowaddon.speech.SpeechRecognitionService;
 
 public class PowerStateReceiver extends BroadcastReceiver {    
     @Override

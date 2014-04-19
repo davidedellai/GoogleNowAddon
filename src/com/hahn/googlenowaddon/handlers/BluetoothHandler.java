@@ -4,43 +4,33 @@ import android.bluetooth.BluetoothAdapter;
 import android.content.Context;
 import android.widget.Toast;
 
-import com.hahn.googlenowaddon.Constants.Enum_Key;
-import com.hahn.googlenowaddon.speech.SpeechRecognitionService;
+import com.hahn.googlenowaddon.SpeechRecognitionService;
 
 public class BluetoothHandler {
-    public static void handleStateChange(Context context, Enum_Key newState) {
+    public static void handleStateChange(Context context, String newState) {
         BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
         if (adapter == null) return;
 
         boolean enabled = adapter.isEnabled();
         
-        String speakText;
+        String speakText = null;
         
-        switch (newState) {
-        case Off:
+        if ("Off".equals(newState)) {
             speakText = enabled ? "Turning Bluetooth off" : "Bluetooth already off";
             Toast.makeText(context, speakText, Toast.LENGTH_SHORT).show();
             
             if (enabled) adapter.disable();           
-            
-            break;
-        case On:
+        } else if ("On".equals(newState)) {
             speakText = enabled ? "Bluetooth already on" : "Turning Bluetooth on";
             Toast.makeText(context, speakText, Toast.LENGTH_SHORT).show();
             
             if (!enabled) adapter.enable();
-
-            break;
-        case Toggle:
+        } else if ("Toggle".equals(newState)) {
             speakText = String.format("Turning Bluetooth %s", enabled ? "off" : "on");
             Toast.makeText(context, speakText, Toast.LENGTH_SHORT).show();
             
             if (enabled)  adapter.disable();
             else adapter.enable();
-
-            break;
-        default:
-            return;
         }
 
         SpeechRecognitionService.speak(context, speakText);

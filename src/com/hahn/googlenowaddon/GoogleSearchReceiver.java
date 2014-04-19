@@ -1,15 +1,8 @@
 package com.hahn.googlenowaddon;
+
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import com.hahn.googlenowaddon.Constants.Enum_Key;
-import com.hahn.googlenowaddon.handlers.BluetoothHandler;
-import com.hahn.googlenowaddon.handlers.MobileDataHandler;
-import com.hahn.googlenowaddon.handlers.QueryMatcher;
-import com.hahn.googlenowaddon.handlers.QueryReplier;
-import com.hahn.googlenowaddon.handlers.WifiHandler;
-import com.hahn.googlenowaddon.speech.SpeechRecognitionService;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -19,11 +12,19 @@ import android.util.Log;
 import android.view.KeyEvent;
 import android.widget.Toast;
 
+import com.hahn.googlenowaddon.handlers.BluetoothHandler;
+import com.hahn.googlenowaddon.handlers.MobileDataHandler;
+import com.hahn.googlenowaddon.handlers.WifiHandler;
+import com.mohammadag.googlesearchapi.hahn.GoogleSearchApi;
+import com.mohammadag.googlesearchapi.hahn.QueryGroup;
+import com.mohammadag.googlesearchapi.hahn.QueryMatcher;
+
 public class GoogleSearchReceiver extends BroadcastReceiver {
 	private static final Pattern SET_VOLUME_TO = Pattern.compile("(?:set )?volume (?:to )?(\\d{1,2})", Pattern.CASE_INSENSITIVE);
 	
-	private static final QueryMatcher		
-		MEDIA_CONTROL = new QueryMatcher(new String[] {
+	public static final QueryGroup group = new QueryGroup(Constants.GROUP_NAME);	
+	public static final QueryMatcher
+		MEDIA_CONTROL = group.addMatcher(new String[] {
 				"CONTAINS ONE : playback, music, song",
 				
 				"START KEY Resume",
@@ -31,29 +32,30 @@ public class GoogleSearchReceiver extends BroadcastReceiver {
 				"START KEY Stop"
 		}),
 			
-		TRACK_CONTROL = new QueryMatcher(new String[] {
+		TRACK_CONTROL = group.addMatcher(new String[] {
 				"CONTAINS ONE : track, song",
 				
 				"START KEY Next",
 				"START KEY Previous"
 		}),
 		
-		VOLUME_CONTROL = new QueryMatcher(new String[] {
+		VOLUME_CONTROL = group.addMatcher(new String[] {
 				"STARTS WITH : volume, set volume",
-				
-				"KEY Up    : up",
-				"KEY Down  : down",
-				"KEY Max   : max, maximum",
-				"KEY Min   : min, low, minimum"
+				 
+				"KEY Up      : up",
+				"KEY Down    : down",
+				"KEY Max     : max, maximum",
+				"KEY Min     : min, low, minimum",
+				"KEY Success : to"
 		}),
 		
-		MUTE_CONTROL = new QueryMatcher(new String[] {
+		MUTE_CONTROL = group.addMatcher(new String[] {
 		        "STARTS WITH : mute, volume mute",
 		        
 		        "MAX LENGTH  : 3"
 		}),
 		
-		WIFI_CONTROL = new QueryMatcher(new String[] {
+		WIFI_CONTROL = group.addMatcher(new String[] {
 		        "CONTAINS : wifi",
 		        
 		        "KEY On     : on, enable",
@@ -61,7 +63,7 @@ public class GoogleSearchReceiver extends BroadcastReceiver {
                 "KEY Toggle : toggle"
 		}),
 		
-		BLUETOOTH_CONTROL = new QueryMatcher(new String[] {
+		BLUETOOTH_CONTROL = group.addMatcher(new String[] {
                 "CONTAINS : bluetooth",
                 
                 "KEY On     : on, enable",
@@ -69,7 +71,7 @@ public class GoogleSearchReceiver extends BroadcastReceiver {
                 "KEY Toggle : toggle"
         }),
         
-        DATA_CONTROL  = new QueryMatcher(new String[] {
+        DATA_CONTROL  = group.addMatcher(new String[] {
                 "CONTAINS : data",
                 
                 "KEY On     : on, enable",
@@ -77,24 +79,22 @@ public class GoogleSearchReceiver extends BroadcastReceiver {
                 "KEY Toggle : toggle"
         }),
         
-        MINIMIZE = new QueryMatcher(new String[] {
+        MINIMIZE = group.addMatcher(new String[] {
                 "CONTAINS ONE : minimize, exit",
                 
                 "MAX LENGTH   : 1"
         }),
         
-        THANK_YOU = new QueryReplier(new String[] {
+        THANK_YOU = group.addReplier(new String[] {
                 "STARTS WITH : thank you, thanks",
                 "MAX LENGTH  : 3",
                 
                 "REPLY : sure thing, no problem, you're welcome"
         });
-		
 	
 	@Override
-	@SuppressWarnings("incomplete-switch")
 	public void onReceive(Context context, Intent intent) {
-		Enum_Key key;
+		String key;
 		
 		String queryText = intent.getStringExtra(GoogleSearchApi.KEY_QUERY_TEXT);
 		queryText = queryText.toLowerCase(Locale.ENGLISH);
@@ -105,16 +105,15 @@ public class GoogleSearchReceiver extends BroadcastReceiver {
 		// Handers
 		key = MEDIA_CONTROL.match(context, queryText);
 		if (key != null) {
-		    switch (key) {
-		    case Resume:
+		    if ("Resume".equals(key)) {
 				sendMediaKey(context, KeyEvent.KEYCODE_MEDIA_PLAY);
 				Toast.makeText(context, "Music Resumed", Toast.LENGTH_SHORT).show();
 				return;
-		    case Pause:
+		    } else if ("Pause".equals(key)) {
 				sendMediaKey(context, KeyEvent.KEYCODE_MEDIA_PAUSE);
 				Toast.makeText(context, "Music Paused", Toast.LENGTH_SHORT).show();
 				return;
-		    case Stop:
+		    } else if ("Stop".equals(key)) {
 				sendMediaKey(context, KeyEvent.KEYCODE_MEDIA_STOP);
 				Toast.makeText(context, "Music Stopped", Toast.LENGTH_SHORT).show();
 				return;
@@ -123,12 +122,11 @@ public class GoogleSearchReceiver extends BroadcastReceiver {
 
 		key = TRACK_CONTROL.match(context, queryText);
 		if (key != null) {
-			switch (key) {
-			case Next:
+			if ("Next".equals(key)) {
 				sendMediaKey(context, KeyEvent.KEYCODE_MEDIA_NEXT);
 				Toast.makeText(context, "Next Song", Toast.LENGTH_SHORT).show();
 				return;
-			case Previous:
+			} else if ("Previous".equals(key)) {
 				sendMediaKey(context, KeyEvent.KEYCODE_MEDIA_PREVIOUS);
 				Toast.makeText(context, "Previous Song", Toast.LENGTH_SHORT).show();
 				return;
@@ -136,19 +134,18 @@ public class GoogleSearchReceiver extends BroadcastReceiver {
 		}
 
 		key = VOLUME_CONTROL.match(context, queryText);
-		if (key != null && key != Enum_Key.Success) {
+		if (key != null && !QueryMatcher.DefaultKey.equals(key)) {
 			AudioManager audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
-			switch(key) {
-			case Up:
+			if ("Up".equals(key)) {
 				audioManager.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_RAISE, AudioManager.FLAG_SHOW_UI);
 				return;
-			case Down:
+			} else if ("Down".equals(key)) {
 				audioManager.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_LOWER, AudioManager.FLAG_SHOW_UI);
 				return;
-			case Max:
+			} else if ("Max".equals(key)) {
 				audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC), AudioManager.FLAG_SHOW_UI);
 				return;
-			case Min:
+			} else if ("Min".equals(key)) {
 				audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, 1, AudioManager.FLAG_SHOW_UI);
 				return;
 			}

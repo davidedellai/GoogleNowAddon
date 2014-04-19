@@ -4,7 +4,6 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 
-import com.hahn.googlenowaddon.speech.SpeechRecognitionService;
 
 public class AndroidBootReceiver extends BroadcastReceiver {
     @Override

@@ -6,14 +6,12 @@ import java.lang.reflect.Method;
 import android.content.Context;
 import android.net.ConnectivityManager;
 
-import com.hahn.googlenowaddon.Constants.Enum_Key;
-
 public class MobileDataHandler {
-	public static void handleStateChange(Context context, Enum_Key newState) {
+	public static void handleStateChange(Context context, String newState) {
 		boolean enabled;
-		if (newState.equals(Enum_Key.On)) {
+		if ("On".equals(newState)) {
 			enabled = true;
-		} else if (newState.equals(Enum_Key.Off)) {
+		} else if ("Off".equals(newState)) {
 			enabled = false;
 		} else {
 			return;

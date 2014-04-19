@@ -16,7 +16,7 @@ import android.widget.EditText;
 import android.widget.Toast;
 
 import com.hahn.googlenowaddon.Constants.Preferences;
-import com.hahn.googlenowaddon.speech.SpeechRecognitionService;
+import com.mohammadag.googlesearchapi.hahn.GoogleSearchApi;
 
 public class MainActivity extends Activity {
     private static final String TAG = "MainActivity";
@@ -55,6 +55,7 @@ public class MainActivity extends Activity {
         super.onResume();
         
         Log.e(TAG, "onResume");
+        GoogleSearchApi.registerQueryGroup(this, GoogleSearchReceiver.group);
         
         // Load prefs
         SharedPreferences prefs = MainActivity.getPrefs(this);

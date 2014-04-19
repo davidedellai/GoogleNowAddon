@@ -1,4 +1,4 @@
-package com.hahn.googlenowaddon.speech;
+package com.hahn.googlenowaddon;
 
 import static edu.cmu.pocketsphinx.Assets.syncAssets;
 import static edu.cmu.pocketsphinx.SpeechRecognizerSetup.defaultSetup;
@@ -31,10 +31,7 @@ import android.widget.Toast;
 
 import com.hahn.googlenowaddon.Constants.Preferences;
 import com.hahn.googlenowaddon.Constants.SpeechRecognitionServiceExtras;
-import com.hahn.googlenowaddon.GoogleSearchApi;
-import com.hahn.googlenowaddon.MainActivity;
-import com.hahn.googlenowaddon.R;
-import com.hahn.googlenowaddon.Util;
+import com.mohammadag.googlesearchapi.hahn.GoogleSearchApi;
 
 import edu.cmu.pocketsphinx.Hypothesis;
 import edu.cmu.pocketsphinx.RecognitionListener;
@@ -82,7 +79,8 @@ public class SpeechRecognitionService extends Service implements
         super.onCreate();
 
         Log.e(TAG, "onCreate");
-        Toast.makeText(getApplicationContext(), R.string.str_starting_now, Toast.LENGTH_SHORT).show();
+        
+        GoogleSearchApi.registerQueryGroup(this, GoogleSearchReceiver.group);
         
         mainThreadHandler = new Handler();
 
@@ -110,7 +108,11 @@ public class SpeechRecognitionService extends Service implements
         try {
             appDir = syncAssets(this);
             
-            sr = defaultSetup().setAcousticModel(new File(appDir, "models/hmm/en-us-semi")).setDictionary(new File(appDir, "models/lm/cmu07a.dic")).setRawLogDir(appDir).setKeywordThreshold(1e-5f).getRecognizer();
+            sr = defaultSetup().setAcousticModel(new File(appDir, "models/hmm/en-us-semi"))
+                    .setDictionary(new File(appDir, "models/lm/cmu07a.dic"))
+                    .setRawLogDir(appDir)
+                    .setKeywordThreshold(1e-5f)
+                    .getRecognizer();
             sr.addListener(new SpeechRecognitionListener());
             sr.addKeywordSearch("wakeup", key_phrase);
         } catch (IOException e) {
@@ -231,9 +233,9 @@ public class SpeechRecognitionService extends Service implements
 
             sr.addKeywordSearch("wakeup", key_phrase);
             sr.startListening("wakeup");
+            
+            startTimeoutTimer(5000);
         } else {
-            if (!fullWakeLock.isHeld()) fullWakeLock.acquire();
-
             Log.e(TAG, "Waiting to close app");
             startTimeoutTimer(2000);
         }
@@ -396,7 +398,11 @@ public class SpeechRecognitionService extends Service implements
         }
 
         @Override
-        public void onResult(Hypothesis hypot) {}
+        public void onResult(Hypothesis hypot) {
+            String phrase = hypot.getHypstr().toLowerCase(Locale.ENGLISH);
+
+            Log.e(TAG, "onResult = " + phrase);
+        }
     }
 
     public class MyBinder extends Binder {
