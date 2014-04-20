@@ -10,10 +10,10 @@ public class Constants {
                                    KEY_REQUIRE_CHARGER = "com.hahn.googlenowaddon.require_charger";
     }
     
-    public static class SpeechRecognitionServiceExtras {
+    public static class SpeechRecognitionServiceActions {
         public static final String TOGGLE_PAUSED = "togglePaused",
                                    START_CHARING = "startCharging",
-                                   STOP_CHARING = "stopCharging";
+                                   STOP_CHARGING = "stopCharging";
         
     }
     

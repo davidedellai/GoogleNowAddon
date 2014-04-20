@@ -30,7 +30,7 @@ import android.util.Log;
 import android.widget.Toast;
 
 import com.hahn.googlenowaddon.Constants.Preferences;
-import com.hahn.googlenowaddon.Constants.SpeechRecognitionServiceExtras;
+import com.hahn.googlenowaddon.Constants.SpeechRecognitionServiceActions;
 import com.mohammadag.googlesearchapi.hahn.GoogleSearchApi;
 
 import edu.cmu.pocketsphinx.Hypothesis;
@@ -163,16 +163,19 @@ public class SpeechRecognitionService extends Service implements
         Log.e(TAG, "Update notification");
         
         Intent clickIntent = new Intent(this, SpeechRecognitionService.class);
-        clickIntent.putExtra(SpeechRecognitionServiceExtras.TOGGLE_PAUSED, true);
+        clickIntent.setAction(SpeechRecognitionServiceActions.TOGGLE_PAUSED);
+        PendingIntent pendingClickIntent = PendingIntent.getService(this, SERVICE_ID, clickIntent, PendingIntent.FLAG_UPDATE_CURRENT);
         
-        PendingIntent pendingClickIntent = PendingIntent.getService(this, 0, clickIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+        int icon = (isPaused ? R.drawable.ic_play : R.drawable.ic_pause);
+        String mss = (isPaused ? "Paused" : "Running");
         
         Notification note = new Notification.Builder(this)
                 .setPriority(Notification.PRIORITY_MIN)
-                .setSmallIcon(R.drawable.ic_launcher)
-                .setContentTitle("Google Now Addon")
-                .setContentText((isPaused ? "Paused" : "Running"))
+                .setContentTitle("Google Now+")
+                .setSmallIcon(icon)
+                .setContentText(mss)
                 .setContentIntent(pendingClickIntent)
+                .addAction(icon, mss, pendingClickIntent)
                 .build();
 
         startForeground(SERVICE_ID, note);
@@ -274,15 +277,15 @@ public class SpeechRecognitionService extends Service implements
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.e(TAG, "onStartCommand");
         
-        boolean stopCharging  = intent.getBooleanExtra(SpeechRecognitionServiceExtras.STOP_CHARING, false);
-        boolean togglePaused  = intent.getBooleanExtra(SpeechRecognitionServiceExtras.TOGGLE_PAUSED, false);
-             
-        if (stopCharging) {
+        String action = intent.getAction();
+        if (action == null) action = "";
+        
+        if (action.equals(SpeechRecognitionServiceActions.STOP_CHARGING)) {
             // If stopped charging and needed stop service
             if (require_charge && !Util.isCharging(this)) {
                 requestStop();
             }
-        } else if (togglePaused) {
+        } else if (action.equals(SpeechRecognitionServiceActions.TOGGLE_PAUSED)) {
             // Toggle paused
             isPaused = !isPaused;
             
@@ -291,7 +294,7 @@ public class SpeechRecognitionService extends Service implements
                 restartListening();
             }
         } else {
-         // Show message if first start and should keep running
+            // Show message if first start and should keep running
             if (shouldStop()) {
                 requestStop();
             } else if (!hasStarted) {

@@ -4,7 +4,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 
-import com.hahn.googlenowaddon.Constants.SpeechRecognitionServiceExtras;
+import com.hahn.googlenowaddon.Constants.SpeechRecognitionServiceActions;
 
 public class PowerStateReceiver extends BroadcastReceiver {    
     @Override
@@ -13,11 +13,11 @@ public class PowerStateReceiver extends BroadcastReceiver {
 
         if (action.equals(Intent.ACTION_POWER_CONNECTED)) {
             Intent service = new Intent(context, SpeechRecognitionService.class);
-            service.putExtra(SpeechRecognitionServiceExtras.START_CHARING, true);
+            service.setAction(SpeechRecognitionServiceActions.START_CHARING);
             context.startService(service);
         } else if(action.equals(Intent.ACTION_POWER_DISCONNECTED)) {
             Intent service = new Intent(context, SpeechRecognitionService.class);
-            service.putExtra(SpeechRecognitionServiceExtras.STOP_CHARING, true);
+            service.setAction(SpeechRecognitionServiceActions.STOP_CHARGING);
             context.startService(service);
         }
     }
