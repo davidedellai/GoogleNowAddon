@@ -71,6 +71,7 @@ public class SpeechRecognitionService extends Service implements
     private boolean isStopRequested;
     private boolean hasStarted;
     private boolean ranLastLoop;
+    private boolean srIsRunning;
     private SpeechRecognizer sr;
 
     @SuppressWarnings("deprecation")
@@ -120,6 +121,10 @@ public class SpeechRecognitionService extends Service implements
         }
     }
     
+    /**
+     * Update the require charge flag and request a stop/start if needed
+     * @param state The new flag state
+     */
     public void setRequiresCharge(boolean state) {
         if (state != require_charge) {
             Log.e(TAG, "setRequiresCharge");
@@ -139,10 +144,20 @@ public class SpeechRecognitionService extends Service implements
         restartListening();
     }
     
+    protected boolean isStarted() {
+        return hasStarted;
+    }
+    
+    /**
+     * @return true if a stop is requested or needs a charge and doesn't have one
+     */
     protected boolean shouldStop() {
         return isStopRequested || (require_charge && !Util.isCharging(this));
     }
     
+    /**
+     * Request that the listener stop
+     */
     private void requestStop() {
         Log.e(TAG, "Requesting stop");
         
@@ -150,15 +165,24 @@ public class SpeechRecognitionService extends Service implements
         startTimeoutTimer(250);
     }
     
+    /**
+     * Request that the listener start
+     */
     private synchronized void requestStart() {
         if (shouldStop()) return;
         
         hasStarted = true;
+        ranLastLoop = true;
+        
+        Toast.makeText(this, R.string.str_start_now, Toast.LENGTH_SHORT).show();
         
         updateNotification();
         restartListening();
     }
     
+    /**
+     * Update the application's notification
+     */
     protected void updateNotification() {
         Log.e(TAG, "Update notification");
         
@@ -185,11 +209,13 @@ public class SpeechRecognitionService extends Service implements
     protected void startListening() {       
         cancelTimeout();
         
-        // Check if stop requested
+        Log.e(TAG, "startListening");
+        
+        // If stop requested
         if (isStopRequested) {
             Log.e(TAG, "Performing requested stop");
             
-            if (hasStarted) {
+            if (isStarted()) {
                 Toast.makeText(this, R.string.str_stop_now, Toast.LENGTH_SHORT).show();
             }
             
@@ -203,17 +229,19 @@ public class SpeechRecognitionService extends Service implements
             stopSelf();
             
             return;
+            
+        // Not already running
         } else if (!hasStarted) {
             return;
-        }
-        
-        sr.stop();
 
-        // Check paused
-        if (isPaused) {    
+        // Is paused
+        } else if (isPaused) {    
             if (fullWakeLock.isHeld()) fullWakeLock.release();
             if (partialWakeLock.isHeld()) partialWakeLock.release();
             
+            stopSR();
+            
+            // Was just paused
             if (ranLastLoop) {
                 ranLastLoop = false;
                 
@@ -221,29 +249,53 @@ public class SpeechRecognitionService extends Service implements
             }
             
             return;
-        }
         
-        // Check if was unpaused
-        if (!ranLastLoop) {
+        // Was just unpaused
+        } else if (!ranLastLoop) {
             ranLastLoop = true;
             
-            Toast.makeText(this, R.string.str_start_now, Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.str_resume_now, Toast.LENGTH_SHORT).show();
         }
 
-        // Start listening
-        if (!powerManager.isScreenOn() || !getForegroundPackage().equals(LAUNCH_TARGET)) {
-            if (fullWakeLock.isHeld()) fullWakeLock.release();
-
-            sr.addKeywordSearch("wakeup", key_phrase);
-            sr.startListening("wakeup");
+        // If on google now, pause our listening
+        if (powerManager.isScreenOn() && getForegroundPackage().equals(LAUNCH_TARGET)) {
+            if (!partialWakeLock.isHeld()) partialWakeLock.acquire();
             
-            startTimeoutTimer(5000);
+            stopSR();
+            
+        // Otherwise resume listening
         } else {
-            Log.e(TAG, "Waiting to close app");
-            startTimeoutTimer(2000);
+            if (fullWakeLock.isHeld()) fullWakeLock.release();
+            
+            if (!srIsRunning) {
+                startSR();
+            }
         }
+        
+        startTimeoutTimer(500);
+    }
+    
+    /**
+     * Properly start/resume speech recognition
+     */
+    private void startSR() {
+        sr.stop();
+        sr.addKeywordSearch("wakeup", key_phrase);
+        sr.startListening("wakeup");
+        srIsRunning = true;
+    }
+    
+    /**
+     * Properly stop/pause speech recognition
+     */
+    private void stopSR() {
+        sr.stop();
+        srIsRunning = false;
     }
 
+    /**
+     * Cancel the timeout timer
+     */
     protected void cancelTimeout() {
         if (timeoutTimer != null) {
             timeoutTimer.cancel();
@@ -251,6 +303,10 @@ public class SpeechRecognitionService extends Service implements
         }
     }
 
+    /**
+     * Start a timeout timer
+     * @param delay The delay for the timer in milliseconds
+     */
     public void startTimeoutTimer(int delay) {
         cancelTimeout();
 
@@ -263,6 +319,9 @@ public class SpeechRecognitionService extends Service implements
         }, delay);
     }
 
+    /**
+     * Restart listening. Use handler to envoke on main thread
+     */
     public void restartListening() {
         mainThreadHandler.post(new Runnable() {
             @Override
@@ -285,11 +344,11 @@ public class SpeechRecognitionService extends Service implements
             if (require_charge && !Util.isCharging(this)) {
                 requestStop();
             }
-        } else if (action.equals(SpeechRecognitionServiceActions.TOGGLE_PAUSED)) {
-            // Toggle paused
-            isPaused = !isPaused;
-            
-            if (hasStarted) {
+        } else if (action.equals(SpeechRecognitionServiceActions.TOGGLE_PAUSED)) {            
+            if (isStarted()) {
+                // Toggle paused
+                isPaused = !isPaused;
+                
                 updateNotification();
                 restartListening();
             }
@@ -297,7 +356,7 @@ public class SpeechRecognitionService extends Service implements
             // Show message if first start and should keep running
             if (shouldStop()) {
                 requestStop();
-            } else if (!hasStarted) {
+            } else if (!isStarted()) {
                 requestStart();
             }
         }
@@ -317,6 +376,11 @@ public class SpeechRecognitionService extends Service implements
         }
     }
 
+    /**
+     * Use our TTS to say something 
+     * @param context The context to use
+     * @param str The string to say
+     */
     public static void speak(Context context, String str) {
         if (tts != null) {
             tts.speak(str, TextToSpeech.QUEUE_FLUSH, null);
@@ -385,7 +449,7 @@ public class SpeechRecognitionService extends Service implements
             Log.e(TAG, "onPartialResult = " + phrase);
 
             if (phrase.equals(key_phrase)) {
-                sr.stop();
+                stopSR();
 
                 LAST_PACKAGE = getForegroundPackage();
                 if (!fullWakeLock.isHeld()) fullWakeLock.acquire();
