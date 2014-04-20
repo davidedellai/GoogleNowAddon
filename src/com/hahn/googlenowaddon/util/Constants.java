@@ -1,4 +1,4 @@
-package com.hahn.googlenowaddon;
+package com.hahn.googlenowaddon.util;
 
 public class Constants {
     public static final String GROUP_NAME = "com.hahn.googlenowaddon.SEARCH_GROUP";

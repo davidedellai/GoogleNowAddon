@@ -29,15 +29,16 @@ import android.speech.tts.TextToSpeech.OnInitListener;
 import android.util.Log;
 import android.widget.Toast;
 
-import com.hahn.googlenowaddon.Constants.Preferences;
-import com.hahn.googlenowaddon.Constants.SpeechRecognitionServiceActions;
+import com.hahn.googlenowaddon.util.Util;
+import com.hahn.googlenowaddon.util.Constants.Preferences;
+import com.hahn.googlenowaddon.util.Constants.SpeechRecognitionServiceActions;
 import com.mohammadag.googlesearchapi.hahn.GoogleSearchApi;
 
 import edu.cmu.pocketsphinx.Hypothesis;
 import edu.cmu.pocketsphinx.RecognitionListener;
 import edu.cmu.pocketsphinx.SpeechRecognizer;
 
-public class SpeechRecognitionService extends Service implements
+public class ServiceSpeechRecognition extends Service implements
         OnInitListener, OnAudioFocusChangeListener {
     public static final String TAG = "SpeechRecognitionService";
     
@@ -81,7 +82,7 @@ public class SpeechRecognitionService extends Service implements
 
         Log.e(TAG, "onCreate");
         
-        GoogleSearchApi.registerQueryGroup(this, GoogleSearchReceiver.group);
+        GoogleSearchApi.registerQueryGroup(this, ReceiverGoogleSearch.group);
         
         mainThreadHandler = new Handler();
 
@@ -101,7 +102,7 @@ public class SpeechRecognitionService extends Service implements
         tts.setSpeechRate(0.9f);
         
         // Refresh prefs
-        SharedPreferences prefs = MainActivity.getPrefs(this);
+        SharedPreferences prefs = ActivityMain.getPrefs(this);
         key_phrase = prefs.getString(Preferences.KEY_PHRASE_KEY, Preferences.DEFAULT_KEY_PHRASE);
         require_charge = prefs.getBoolean(Preferences.KEY_REQUIRE_CHARGER, true);
         
@@ -186,7 +187,7 @@ public class SpeechRecognitionService extends Service implements
     protected void updateNotification() {
         Log.e(TAG, "Update notification");
         
-        Intent clickIntent = new Intent(this, SpeechRecognitionService.class);
+        Intent clickIntent = new Intent(this, ServiceSpeechRecognition.class);
         clickIntent.setAction(SpeechRecognitionServiceActions.TOGGLE_PAUSED);
         PendingIntent pendingClickIntent = PendingIntent.getService(this, SERVICE_ID, clickIntent, PendingIntent.FLAG_UPDATE_CURRENT);
         
@@ -473,8 +474,8 @@ public class SpeechRecognitionService extends Service implements
     }
 
     public class MyBinder extends Binder {
-        public SpeechRecognitionService getService() {
-            return SpeechRecognitionService.this;
+        public ServiceSpeechRecognition getService() {
+            return ServiceSpeechRecognition.this;
         }
     }
 }

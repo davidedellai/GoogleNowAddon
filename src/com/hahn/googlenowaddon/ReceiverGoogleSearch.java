@@ -12,14 +12,15 @@ import android.util.Log;
 import android.view.KeyEvent;
 import android.widget.Toast;
 
-import com.hahn.googlenowaddon.handlers.BluetoothHandler;
-import com.hahn.googlenowaddon.handlers.MobileDataHandler;
-import com.hahn.googlenowaddon.handlers.WifiHandler;
+import com.hahn.googlenowaddon.handlers.HandlerBluetooth;
+import com.hahn.googlenowaddon.handlers.HandlerMobileData;
+import com.hahn.googlenowaddon.handlers.HandlerWifi;
+import com.hahn.googlenowaddon.util.Constants;
 import com.mohammadag.googlesearchapi.hahn.GoogleSearchApi;
 import com.mohammadag.googlesearchapi.hahn.QueryGroup;
 import com.mohammadag.googlesearchapi.hahn.QueryMatcher;
 
-public class GoogleSearchReceiver extends BroadcastReceiver {
+public class ReceiverGoogleSearch extends BroadcastReceiver {
 	private static final Pattern SET_VOLUME_TO = Pattern.compile("(?:set )?volume (?:to )?(\\d{1,2})", Pattern.CASE_INSENSITIVE);
 	
 	public static final QueryGroup group = new QueryGroup(Constants.GROUP_NAME);	
@@ -160,27 +161,27 @@ public class GoogleSearchReceiver extends BroadcastReceiver {
 		
 		key = WIFI_CONTROL.match(context, queryText);
 		if (key != null) {
-		    WifiHandler.handleStateChange(context, key);
+		    HandlerWifi.handleStateChange(context, key);
 		    return;
 		}
 		
 		key = BLUETOOTH_CONTROL.match(context, queryText);
 		if (key != null) {
-		    BluetoothHandler.handleStateChange(context, key);
+		    HandlerBluetooth.handleStateChange(context, key);
 		}
 		
 		key = DATA_CONTROL.match(context, queryText);
 		if (key != null) {
-            MobileDataHandler.handleStateChange(context, key);
+            HandlerMobileData.handleStateChange(context, key);
         }
 		
 		key = MINIMIZE.match(context, queryText);
 		if (key != null) {
-		    Log.e("Reciever", SpeechRecognitionService.LAST_PACKAGE);
+		    Log.e("Reciever", ServiceSpeechRecognition.LAST_PACKAGE);
 		    
 		    // Try to relaunch last package
-		    if (!SpeechRecognitionService.LAST_PACKAGE.equals(SpeechRecognitionService.LAUNCH_TARGET)) {
-    		    Intent lastPackage = context.getPackageManager().getLaunchIntentForPackage(SpeechRecognitionService.LAST_PACKAGE);
+		    if (!ServiceSpeechRecognition.LAST_PACKAGE.equals(ServiceSpeechRecognition.LAUNCH_TARGET)) {
+    		    Intent lastPackage = context.getPackageManager().getLaunchIntentForPackage(ServiceSpeechRecognition.LAST_PACKAGE);
                 if (lastPackage != null) {
                     lastPackage.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                     context.startActivity(lastPackage);
@@ -203,7 +204,7 @@ public class GoogleSearchReceiver extends BroadcastReceiver {
 			int level = Integer.valueOf(m.group(1));
 			if (level >= 0 && level <= audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)) {
 				audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, level, AudioManager.FLAG_SHOW_UI);
-				SpeechRecognitionService.speak(context, "Set volume to " + level);
+				ServiceSpeechRecognition.speak(context, "Set volume to " + level);
 			}
 			
 			return;

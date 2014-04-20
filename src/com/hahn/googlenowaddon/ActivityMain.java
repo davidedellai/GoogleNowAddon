@@ -15,16 +15,17 @@ import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.Toast;
 
-import com.hahn.googlenowaddon.Constants.Preferences;
+import com.hahn.googlenowaddon.util.Util;
+import com.hahn.googlenowaddon.util.Constants.Preferences;
 import com.mohammadag.googlesearchapi.hahn.GoogleSearchApi;
 
-public class MainActivity extends Activity {
+public class ActivityMain extends Activity {
     private static final String TAG = "MainActivity";
     
-    private SpeechRecognitionService service;
+    private ServiceSpeechRecognition service;
     private ServiceConnection mConnection = new ServiceConnection() {
         public void onServiceConnected(ComponentName className, IBinder binder) {
-            SpeechRecognitionService.MyBinder b = (SpeechRecognitionService.MyBinder) binder;
+            ServiceSpeechRecognition.MyBinder b = (ServiceSpeechRecognition.MyBinder) binder;
             service = b.getService();
             
             Log.e(TAG, "Service connected");
@@ -55,10 +56,10 @@ public class MainActivity extends Activity {
         super.onResume();
         
         Log.e(TAG, "onResume");
-        GoogleSearchApi.registerQueryGroup(this, GoogleSearchReceiver.group);
+        GoogleSearchApi.registerQueryGroup(this, ReceiverGoogleSearch.group);
         
         // Load prefs
-        SharedPreferences prefs = MainActivity.getPrefs(this);
+        SharedPreferences prefs = ActivityMain.getPrefs(this);
         String key_phrase = prefs.getString(Preferences.KEY_PHRASE_KEY, Preferences.DEFAULT_KEY_PHRASE);
         boolean require_charge = prefs.getBoolean(Preferences.KEY_REQUIRE_CHARGER, true);
         
@@ -89,7 +90,7 @@ public class MainActivity extends Activity {
     private void bindIntent() {
         Log.e(TAG, "Bind intent");
         
-        Intent intent = new Intent(this, SpeechRecognitionService.class);
+        Intent intent = new Intent(this, ServiceSpeechRecognition.class);
         startService(intent);
         bindService(intent, mConnection, 0);
     }
@@ -127,7 +128,7 @@ public class MainActivity extends Activity {
         CheckBox checkbox = (CheckBox) findViewById(R.id.require_battery);
         boolean require_charge = checkbox.isChecked();
         
-        SharedPreferences.Editor prefs = MainActivity.getPrefs(this).edit();
+        SharedPreferences.Editor prefs = ActivityMain.getPrefs(this).edit();
         
         prefs.putString(Preferences.KEY_PHRASE_KEY, key_phrase);
         prefs.putBoolean(Preferences.KEY_REQUIRE_CHARGER, require_charge);

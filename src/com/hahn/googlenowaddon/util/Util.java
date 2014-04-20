@@ -1,4 +1,4 @@
-package com.hahn.googlenowaddon;
+package com.hahn.googlenowaddon.util;
 
 import java.util.List;
 

@@ -6,7 +6,7 @@ import java.lang.reflect.Method;
 import android.content.Context;
 import android.net.ConnectivityManager;
 
-public class MobileDataHandler {
+public class HandlerMobileData {
 	public static void handleStateChange(Context context, String newState) {
 		boolean enabled;
 		if ("On".equals(newState)) {

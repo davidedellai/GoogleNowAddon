@@ -4,9 +4,9 @@ import android.content.Context;
 import android.net.wifi.WifiManager;
 import android.widget.Toast;
 
-import com.hahn.googlenowaddon.SpeechRecognitionService;
+import com.hahn.googlenowaddon.ServiceSpeechRecognition;
 
-public class WifiHandler {
+public class HandlerWifi {
 
     public static void handleStateChange(Context context, String newState) {
         WifiManager mWifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
@@ -35,6 +35,6 @@ public class WifiHandler {
         }
 
         Toast.makeText(context, visualText, Toast.LENGTH_SHORT).show();
-        SpeechRecognitionService.speak(context, speakText);
+        ServiceSpeechRecognition.speak(context, speakText);
     }
 }

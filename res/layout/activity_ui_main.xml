@@ -5,7 +5,7 @@
     android:layout_height="fill_parent"
     android:orientation="vertical"
     android:label="@string/lbl_title"
-    tools:context=".MainActivity" >
+    tools:context=".ActivityMain" >
 
     <TextView
         android:id="@+id/lbl_key_phrase"

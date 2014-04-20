@@ -4,9 +4,9 @@ import android.bluetooth.BluetoothAdapter;
 import android.content.Context;
 import android.widget.Toast;
 
-import com.hahn.googlenowaddon.SpeechRecognitionService;
+import com.hahn.googlenowaddon.ServiceSpeechRecognition;
 
-public class BluetoothHandler {
+public class HandlerBluetooth {
     public static void handleStateChange(Context context, String newState) {
         BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
         if (adapter == null) return;
@@ -33,6 +33,6 @@ public class BluetoothHandler {
             else adapter.enable();
         }
 
-        SpeechRecognitionService.speak(context, speakText);
+        ServiceSpeechRecognition.speak(context, speakText);
     }
 }
